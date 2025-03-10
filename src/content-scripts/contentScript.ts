@@ -10,6 +10,24 @@ let observedComposer: Element | null = null;
 // A unique identifier for this container
 const containerId = "chatgpt-quick-prompts-container-" + Date.now();
 
+// Determine which site we're on
+const currentSite = (() => {
+  const url = window.location.href;
+  if (url.includes("chat.openai.com") || url.includes("chatgpt.com")) {
+    return "chatgpt";
+  } else if (url.includes("grok.com")) {
+    return "grok";
+  } else if (url.includes("x.com/i/grok")) {
+    return "x-grok";
+  }
+  return "unknown";
+})();
+
+// Check if we're on Grok homepage (not in a conversation)
+const isGrokHomepage = () => {
+  return currentSite === "grok" && !window.location.pathname.includes("/c/");
+};
+
 /**
  * Cleans up existing prompt containers to avoid duplicates
  */
@@ -26,24 +44,58 @@ function cleanupExistingContainers() {
   });
 }
 
+// Get the appropriate target element for Grok based on the current page
+function getGrokTargetElement(): Element | null {
+  // First try conversation page input
+  let targetElement = document.querySelector(
+    "div.relative.z-40.flex.flex-col.items-center.w-full > div.relative.w-full"
+  );
+
+  // If not found, try the homepage input
+  if (!targetElement) {
+    targetElement = document.querySelector(
+      "div.flex.flex-col.items-center.w-full.gap-1 > div.flex.flex-col-reverse.items-center.justify-between.flex-1.w-full > form"
+    );
+  }
+
+  // If still not found, try the original selector as a fallback
+  if (!targetElement) {
+    targetElement = document.querySelector(
+      "body > div > div > main > div.relative.flex.flex-col.items-center.h-full.\\@container\\/main > div.absolute.bottom-0.mx-auto.inset-x-0.max-w-\\[50rem\\].z-50"
+    );
+  }
+
+  return targetElement;
+}
+
 // Observe DOM changes for dynamic UI injection
 const observer = new MutationObserver(() => {
-  // Find the composer background div
-  const composerBackground = document.querySelector("#composer-background");
+  // Find the target element based on current site
+  let targetElement: Element | null = null;
 
-  // If no composer or we're already observing this one, do nothing
-  if (!composerBackground || composerBackground === observedComposer) {
+  if (currentSite === "chatgpt") {
+    targetElement = document.querySelector("#composer-background");
+  } else if (currentSite === "grok") {
+    targetElement = getGrokTargetElement();
+  } else if (currentSite === "x-grok") {
+    targetElement = document.querySelector(
+      "#react-root > div > div > div.css-175oi2r.r-1f2l425.r-13qz1uu.r-417010.r-18u37iz > main > div > div > div > div > div > div.r-6koalj.r-eqz5dr.r-1pi2tsx.r-13qz1uu > div > div > div.css-175oi2r.r-1p0dtai.r-gtdqiz.r-13qz1uu"
+    );
+  }
+
+  // If no target or we're already observing this one, do nothing
+  if (!targetElement || targetElement === observedComposer) {
     return;
   }
 
-  // We found a new composer - clean up and inject
-  observedComposer = composerBackground;
+  // We found a new target - clean up and inject
+  observedComposer = targetElement;
   cleanupExistingContainers();
-  injectPromptButtons(composerBackground);
+  injectPromptButtons(targetElement);
 });
 
 /**
- * Injects prompt buttons into the ChatGPT UI
+ * Injects prompt buttons into the UI
  */
 async function injectPromptButtons(targetElement: Element) {
   try {
@@ -76,6 +128,13 @@ async function injectPromptButtons(targetElement: Element) {
     quickPromptsContainer.style.borderRadius = "8px";
     quickPromptsContainer.style.backgroundColor = "rgba(247, 247, 248, 0.1)";
     quickPromptsContainer.style.width = "100%";
+    quickPromptsContainer.style.zIndex = "50"; // Ensure it's visible
+    quickPromptsContainer.style.position = "relative"; // Fix visibility on conversation page
+
+    // Center buttons on Grok homepage
+    if (isGrokHomepage()) {
+      quickPromptsContainer.style.justifyContent = "center";
+    }
 
     // Add prompt buttons to container
     prompts.forEach((prompt) => {
@@ -83,12 +142,18 @@ async function injectPromptButtons(targetElement: Element) {
       quickPromptsContainer!.appendChild(button);
     });
 
-    // Insert container directly after the composer background
-    if (targetElement.parentElement) {
-      targetElement.parentElement.insertBefore(
-        quickPromptsContainer,
-        targetElement.nextSibling
-      );
+    // Insert container based on the current site
+    if (currentSite === "chatgpt") {
+      // Original ChatGPT insertion - after composer background
+      if (targetElement.parentElement) {
+        targetElement.parentElement.insertBefore(
+          quickPromptsContainer,
+          targetElement.nextSibling
+        );
+      }
+    } else if (currentSite === "grok" || currentSite === "x-grok") {
+      // For Grok on grok.com and x.com, append as the last child
+      targetElement.appendChild(quickPromptsContainer);
     }
   } catch (error) {
     console.error("Error injecting prompt buttons:", error);
@@ -140,13 +205,50 @@ function insertTextWithLineBreaks(
 }
 
 /**
- * Safely insert text at the current cursor position in ChatGPT's editor
+ * Handles insertion into a standard textarea element (like those used by Grok)
+ */
+function insertTextIntoTextarea(
+  textareaElement: HTMLTextAreaElement,
+  text: string
+): void {
+  // Get the cursor position
+  const start = textareaElement.selectionStart || 0;
+  const end = textareaElement.selectionEnd || 0;
+
+  // Current value
+  const currentValue = textareaElement.value;
+
+  // Insert the text at cursor position or replace selected text
+  const newValue =
+    currentValue.substring(0, start) + text + currentValue.substring(end);
+
+  // Update the textarea value
+  textareaElement.value = newValue;
+
+  // Set cursor position after inserted text
+  const newCursorPos = start + text.length;
+  textareaElement.selectionStart = newCursorPos;
+  textareaElement.selectionEnd = newCursorPos;
+
+  // Dispatch input event to trigger UI updates
+  textareaElement.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+/**
+ * Safely insert text at the current cursor position
  * Handles complex DOM structure and selection states
  */
 function insertTextAtCursorPosition(
   inputElement: HTMLElement,
   text: string
 ): void {
+  // For standard textareas (like Grok uses), use the simpler method
+  if (inputElement.tagName.toLowerCase() === "textarea") {
+    insertTextIntoTextarea(inputElement as HTMLTextAreaElement, text);
+    return;
+  }
+
+  // For contenteditable elements (like ChatGPT uses)
   // Store current focus state
   const wasAlreadyFocused = document.activeElement === inputElement;
 
@@ -192,13 +294,44 @@ function insertTextAtCursorPosition(
     inputElement.innerText = currentText ? currentText + "\n" + text : text;
   }
 
-  // Manually dispatch input event for ChatGPT UI to detect the change
+  // Manually dispatch input event for the UI to detect the change
   inputElement.dispatchEvent(new Event("input", { bubbles: true }));
 
   // Keep focus if it was already focused
   if (!wasAlreadyFocused) {
     // We intentionally leave it focused since we just inserted text
   }
+}
+
+/**
+ * Find the input element for the current site
+ */
+function findInputElement(): HTMLElement | null {
+  if (currentSite === "chatgpt") {
+    return document.querySelector("#prompt-textarea");
+  } else if (currentSite === "grok") {
+    // Find Grok.com input element - try multiple selectors
+    const selectors = [
+      // Conversation page textarea
+      'textarea[aria-label="Ask Grok anything"]',
+      // Homepage textarea
+      "div.flex.flex-col.items-center.w-full textarea",
+      // Generic contenteditable
+      '[contenteditable="true"]',
+    ];
+
+    for (const selector of selectors) {
+      const element = document.querySelector(selector);
+      if (element) return element as HTMLElement;
+    }
+
+    return null;
+  } else if (currentSite === "x-grok") {
+    // Find X.com Grok input element
+    return document.querySelector('[data-testid="tweetTextarea_0"]');
+  }
+
+  return null;
 }
 
 /**
@@ -242,11 +375,14 @@ function createPromptButton(prompt: Prompt): HTMLElement {
     event.preventDefault();
     event.stopPropagation();
 
-    // Find the contenteditable div that serves as the input
-    const inputDiv = document.querySelector("#prompt-textarea");
-    if (inputDiv) {
+    // Find the input element
+    const inputElement = findInputElement();
+
+    if (inputElement) {
+      console.log("Found input element:", inputElement);
+
       // Insert text at cursor position or replace selection
-      insertTextAtCursorPosition(inputDiv as HTMLElement, prompt.text);
+      insertTextAtCursorPosition(inputElement, prompt.text);
 
       // Find any submit buttons and ensure our prompt doesn't trigger them
       const submitButton = document.querySelector(
@@ -259,6 +395,8 @@ function createPromptButton(prompt: Prompt): HTMLElement {
           console.log("Prompt insertion complete - cursor position preserved");
         }, 50);
       }
+    } else {
+      console.error("Could not find input element for text insertion");
     }
 
     // Return false for good measure (old-school way to prevent defaults)
@@ -276,10 +414,23 @@ observer.observe(document.body, {
 
 // Initial cleanup and injection
 cleanupExistingContainers();
-const composerBackground = document.querySelector("#composer-background");
-if (composerBackground) {
-  observedComposer = composerBackground;
-  injectPromptButtons(composerBackground);
+
+// Initial injection based on current site
+let initialTargetElement: Element | null = null;
+
+if (currentSite === "chatgpt") {
+  initialTargetElement = document.querySelector("#composer-background");
+} else if (currentSite === "grok") {
+  initialTargetElement = getGrokTargetElement();
+} else if (currentSite === "x-grok") {
+  initialTargetElement = document.querySelector(
+    "#react-root > div > div > div.css-175oi2r.r-1f2l425.r-13qz1uu.r-417010.r-18u37iz > main > div > div > div > div > div > div.r-6koalj.r-eqz5dr.r-1pi2tsx.r-13qz1uu > div > div > div.css-175oi2r.r-1p0dtai.r-gtdqiz.r-13qz1uu"
+  );
+}
+
+if (initialTargetElement) {
+  observedComposer = initialTargetElement;
+  injectPromptButtons(initialTargetElement);
 }
 
 // Listen for storage changes to update buttons
@@ -289,11 +440,22 @@ chrome.storage.onChanged.addListener(
       // Clean up existing containers first
       cleanupExistingContainers();
 
-      // Re-inject buttons when prompts change
-      const composerBackground = document.querySelector("#composer-background");
-      if (composerBackground) {
-        observedComposer = composerBackground;
-        injectPromptButtons(composerBackground);
+      // Re-inject buttons when prompts change based on current site
+      let targetElement: Element | null = null;
+
+      if (currentSite === "chatgpt") {
+        targetElement = document.querySelector("#composer-background");
+      } else if (currentSite === "grok") {
+        targetElement = getGrokTargetElement();
+      } else if (currentSite === "x-grok") {
+        targetElement = document.querySelector(
+          "#react-root > div > div > div.css-175oi2r.r-1f2l425.r-13qz1uu.r-417010.r-18u37iz > main > div > div > div > div > div > div.r-6koalj.r-eqz5dr.r-1pi2tsx.r-13qz1uu > div > div > div.css-175oi2r.r-1p0dtai.r-gtdqiz.r-13qz1uu"
+        );
+      }
+
+      if (targetElement) {
+        observedComposer = targetElement;
+        injectPromptButtons(targetElement);
       }
     }
   }

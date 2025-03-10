@@ -109,3 +109,35 @@
 - Set up screenshots directory for documentation visuals
 - Ensured all documentation is up-to-date and accurately reflects functionality
 - Prepared project structure for public repository 
+
+### Grok Support Extension
+- Extended the extension to work with Grok on grok.com and x.com/i/grok
+- Added site detection logic to handle different websites appropriately
+- Implemented specific DOM element targeting for each site using the provided selectors
+- Modified prompt injection strategy to append buttons as the last child for Grok interfaces
+- Added support for different input elements across platforms (contenteditable for Grok, tweet textarea for X)
+- Updated manifest.json to include permissions for the new domains
+- Enhanced the observer logic to detect and handle different UI structures 
+
+### Grok Support Fixes
+- Improved target element detection for Grok homepage and conversation pages
+- Added multiple selectors to handle different UI states and page structures
+- Created a dedicated function to find the appropriate target element on Grok's site
+- Added specialized handling for standard textareas (used by Grok) vs. contenteditable elements (used by ChatGPT)
+- Implemented a robust input element finder with multiple selector fallbacks
+- Fixed text injection for Grok's textarea elements using the proper textarea API
+- Added better error logging and increased z-index to ensure the prompt bar is visible
+- Enhanced the MutationObserver to detect and adapt to Grok's dynamic UI changes 
+
+### Grok Conversation Page Visibility Fix
+- Fixed issue where prompt buttons were in the DOM but not visible on Grok conversation pages
+- Added `position: relative` to the quick prompts container to ensure proper rendering in Grok's CSS stacking context
+- Improved visibility while maintaining all existing functionality
+- Ensured consistent display across all supported pages without affecting layout or other UI elements 
+
+### Grok Homepage UI Enhancement
+- Added horizontal centering for prompt buttons on the Grok homepage
+- Created a path-based detection function to distinguish between Grok homepage and conversation pages
+- Applied `justifyContent: center` to the flex container only on the Grok homepage
+- Maintained the original left alignment for conversation pages and other platforms
+- Improved visual consistency with Grok's centered UI elements 

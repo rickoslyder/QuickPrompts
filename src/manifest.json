@@ -18,10 +18,20 @@
   "options_page": "options.html",
   "content_scripts": [
     {
-      "matches": ["https://chat.openai.com/*", "https://chatgpt.com/*"],
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://grok.com/*",
+        "https://x.com/i/grok*"
+      ],
       "js": ["contentScript.js"]
     }
   ],
   "permissions": ["storage", "unlimitedStorage"],
-  "host_permissions": ["https://chat.openai.com/*", "https://chatgpt.com/*"]
+  "host_permissions": [
+    "https://chat.openai.com/*",
+    "https://chatgpt.com/*",
+    "https://grok.com/*",
+    "https://x.com/i/grok*"
+  ]
 }
