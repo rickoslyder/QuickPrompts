@@ -13,15 +13,24 @@ const containerId = "chatgpt-quick-prompts-container-" + Date.now();
 // Determine which site we're on
 const currentSite = (() => {
   const url = window.location.href;
+  console.log("[Quick Prompts Debug] Current URL:", url);
   if (url.includes("chat.openai.com") || url.includes("chatgpt.com")) {
     return "chatgpt";
   } else if (url.includes("grok.com")) {
     return "grok";
   } else if (url.includes("x.com/i/grok")) {
     return "x-grok";
+  } else if (url.includes("gemini.google.com")) {
+    console.log("[Quick Prompts Debug] Detected Gemini");
+    return "gemini";
+  } else if (url.includes("chat.deepseek.com")) {
+    console.log("[Quick Prompts Debug] Detected DeepSeek");
+    return "deepseek";
   }
   return "unknown";
 })();
+
+console.log("[Quick Prompts Debug] Detected site:", currentSite);
 
 // Check if we're on Grok homepage (not in a conversation)
 const isGrokHomepage = () => {
@@ -70,6 +79,8 @@ function getGrokTargetElement(): Element | null {
 
 // Observe DOM changes for dynamic UI injection
 const observer = new MutationObserver(() => {
+  console.log("[Quick Prompts Debug] DOM mutation observed");
+
   // Find the target element based on current site
   let targetElement: Element | null = null;
 
@@ -81,13 +92,49 @@ const observer = new MutationObserver(() => {
     targetElement = document.querySelector(
       "#react-root > div > div > div.css-175oi2r.r-1f2l425.r-13qz1uu.r-417010.r-18u37iz > main > div > div > div > div > div > div.r-6koalj.r-eqz5dr.r-1pi2tsx.r-13qz1uu > div > div > div.css-175oi2r.r-1p0dtai.r-gtdqiz.r-13qz1uu"
     );
+  } else if (currentSite === "gemini") {
+    console.log(
+      "[Quick Prompts Debug] Searching for Gemini elements in mutation"
+    );
+    const inputArea = document.querySelector(".input-area-container");
+    console.log(
+      "[Quick Prompts Debug] Found input area in mutation:",
+      inputArea
+    );
+    if (inputArea) {
+      targetElement = inputArea;
+      console.log(
+        "[Quick Prompts Debug] Found container in mutation:",
+        targetElement
+      );
+    }
+  } else if (currentSite === "deepseek") {
+    console.log(
+      "[Quick Prompts Debug] Searching for DeepSeek elements in mutation"
+    );
+    const chatInput = document.querySelector("#chat-input");
+    console.log(
+      "[Quick Prompts Debug] Found chat input in mutation:",
+      chatInput
+    );
+    if (chatInput) {
+      targetElement = chatInput.closest("div[class*='dd442025']");
+      console.log(
+        "[Quick Prompts Debug] Found container in mutation:",
+        targetElement
+      );
+    }
   }
 
   // If no target or we're already observing this one, do nothing
   if (!targetElement || targetElement === observedComposer) {
+    console.log(
+      "[Quick Prompts Debug] No new target element found or already observing"
+    );
     return;
   }
 
+  console.log("[Quick Prompts Debug] Found new target element:", targetElement);
   // We found a new target - clean up and inject
   observedComposer = targetElement;
   cleanupExistingContainers();
@@ -99,11 +146,18 @@ const observer = new MutationObserver(() => {
  */
 async function injectPromptButtons(targetElement: Element) {
   try {
+    console.log(
+      "[Quick Prompts Debug] Starting injection for site:",
+      currentSite
+    );
+
     // Get prompts from storage
     const prompts = await getPrompts();
+    console.log("[Quick Prompts Debug] Loaded prompts:", prompts?.length || 0);
 
     // If no prompts, don't inject anything
     if (!prompts || prompts.length === 0) {
+      console.log("[Quick Prompts Debug] No prompts found, skipping injection");
       return;
     }
 
@@ -131,6 +185,13 @@ async function injectPromptButtons(targetElement: Element) {
     quickPromptsContainer.style.zIndex = "50"; // Ensure it's visible
     quickPromptsContainer.style.position = "relative"; // Fix visibility on conversation page
 
+    // Add DeepSeek-specific styles when on DeepSeek
+    if (currentSite === "deepseek") {
+      quickPromptsContainer.style.backgroundColor = "rgba(66, 68, 81, 0.3)"; // Match DeepSeek's dark theme
+      quickPromptsContainer.style.borderRadius = "12px"; // Match DeepSeek's UI
+      quickPromptsContainer.style.padding = "12px"; // More padding to match DeepSeek's spacing
+    }
+
     // Center buttons on Grok homepage
     if (isGrokHomepage()) {
       quickPromptsContainer.style.justifyContent = "center";
@@ -139,6 +200,17 @@ async function injectPromptButtons(targetElement: Element) {
     // Add prompt buttons to container
     prompts.forEach((prompt) => {
       const button = createPromptButton(prompt);
+
+      // Add DeepSeek-specific button styles
+      if (currentSite === "deepseek") {
+        button.className =
+          "ds-button ds-button--primary ds-button--filled ds-button--rect ds-button--m";
+        button.style.setProperty("--ds-button-color", "transparent");
+        button.style.setProperty("--button-text-color", "#F8FAFF");
+        button.style.setProperty("--button-border-color", "#626262");
+        button.style.setProperty("--ds-button-hover-color", "#424451");
+      }
+
       quickPromptsContainer!.appendChild(button);
     });
 
@@ -154,9 +226,71 @@ async function injectPromptButtons(targetElement: Element) {
     } else if (currentSite === "grok" || currentSite === "x-grok") {
       // For Grok on grok.com and x.com, append as the last child
       targetElement.appendChild(quickPromptsContainer);
+    } else if (currentSite === "gemini") {
+      console.log("[Quick Prompts Debug] Attempting Gemini injection");
+      const disclaimerElement = document.querySelector(
+        "hallucination-disclaimer"
+      );
+      console.log(
+        "[Quick Prompts Debug] Found disclaimer element:",
+        disclaimerElement
+      );
+      if (disclaimerElement) {
+        // Insert before the disclaimer element itself
+        disclaimerElement.parentElement?.insertBefore(
+          quickPromptsContainer!,
+          disclaimerElement
+        );
+        console.log("[Quick Prompts Debug] Successfully injected for Gemini");
+
+        // Add Gemini-specific alignment styles
+        quickPromptsContainer!.style.margin = "0 auto"; // Center horizontally
+        quickPromptsContainer!.style.width = "calc(100% - 32px)"; // Match input width
+        quickPromptsContainer!.style.maxWidth = "672px"; // Match Gemini's max width
+        quickPromptsContainer!.style.marginBottom = "12px";
+      } else {
+        // Fallback to inserting after the input area if no disclaimer found
+        console.log(
+          "[Quick Prompts Debug] Trying fallback injection for Gemini"
+        );
+        const inputArea = document.querySelector(".input-area-container");
+        if (inputArea) {
+          inputArea.appendChild(quickPromptsContainer!);
+          console.log(
+            "[Quick Prompts Debug] Successfully injected using fallback for Gemini"
+          );
+        } else {
+          console.log(
+            "[Quick Prompts Debug] Failed to find Gemini injection point"
+          );
+        }
+      }
+    } else if (currentSite === "deepseek") {
+      console.log("[Quick Prompts Debug] Attempting DeepSeek injection");
+      const buttonsContainer = targetElement.querySelector(
+        "div[class*='ec4f5d61']"
+      );
+      console.log(
+        "[Quick Prompts Debug] Found buttons container:",
+        buttonsContainer
+      );
+      if (buttonsContainer && buttonsContainer.parentElement) {
+        buttonsContainer.parentElement.insertBefore(
+          quickPromptsContainer!,
+          buttonsContainer.nextSibling
+        );
+        console.log("[Quick Prompts Debug] Successfully injected for DeepSeek");
+      } else {
+        console.log(
+          "[Quick Prompts Debug] Failed to find DeepSeek injection point"
+        );
+      }
     }
   } catch (error) {
-    console.error("Error injecting prompt buttons:", error);
+    console.error(
+      "[Quick Prompts Debug] Error injecting prompt buttons:",
+      error
+    );
   }
 }
 
@@ -235,6 +369,39 @@ function insertTextIntoTextarea(
 }
 
 /**
+ * Insert text with preserved line breaks at the cursor position for Quill editor (Gemini)
+ */
+function insertTextIntoQuillEditor(editor: HTMLElement, text: string): void {
+  // Clear any existing content if it's just a blank line
+  if (editor.innerHTML === "<p><br></p>") {
+    editor.innerHTML = "";
+  }
+
+  // Split text into lines and wrap each in <p> tags
+  const lines = text.split("\n");
+  const formattedText = lines
+    .map((line) => `<p>${line || "<br>"}</p>`)
+    .join("");
+
+  // Insert at cursor or append
+  const selection = window.getSelection();
+  if (selection && selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0);
+    const fragment = document
+      .createRange()
+      .createContextualFragment(formattedText);
+    range.deleteContents();
+    range.insertNode(fragment);
+  } else {
+    // Append if no cursor position
+    editor.innerHTML += formattedText;
+  }
+
+  // Dispatch input event to trigger UI updates
+  editor.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+/**
  * Safely insert text at the current cursor position
  * Handles complex DOM structure and selection states
  */
@@ -245,6 +412,12 @@ function insertTextAtCursorPosition(
   // For standard textareas (like Grok uses), use the simpler method
   if (inputElement.tagName.toLowerCase() === "textarea") {
     insertTextIntoTextarea(inputElement as HTMLTextAreaElement, text);
+    return;
+  }
+
+  // For Gemini's Quill editor
+  if (inputElement.classList.contains("ql-editor")) {
+    insertTextIntoQuillEditor(inputElement, text);
     return;
   }
 
@@ -329,6 +502,21 @@ function findInputElement(): HTMLElement | null {
   } else if (currentSite === "x-grok") {
     // Find X.com Grok input element
     return document.querySelector('[data-testid="tweetTextarea_0"]');
+  } else if (currentSite === "gemini") {
+    // Try to find the rich-textarea first
+    const richTextarea = document.querySelector("rich-textarea .ql-editor");
+    if (richTextarea) return richTextarea as HTMLElement;
+
+    // Fallback to any contenteditable div in the input area
+    const inputArea = document.querySelector(".input-area-container");
+    if (inputArea) {
+      const editableDiv = inputArea.querySelector('[contenteditable="true"]');
+      if (editableDiv) return editableDiv as HTMLElement;
+    }
+    return null;
+  } else if (currentSite === "deepseek") {
+    // Find DeepSeek input element
+    return document.querySelector("#chat-input");
   }
 
   return null;
@@ -418,6 +606,11 @@ cleanupExistingContainers();
 // Initial injection based on current site
 let initialTargetElement: Element | null = null;
 
+console.log(
+  "[Quick Prompts Debug] Starting initial element search for site:",
+  currentSite
+);
+
 if (currentSite === "chatgpt") {
   initialTargetElement = document.querySelector("#composer-background");
 } else if (currentSite === "grok") {
@@ -426,7 +619,28 @@ if (currentSite === "chatgpt") {
   initialTargetElement = document.querySelector(
     "#react-root > div > div > div.css-175oi2r.r-1f2l425.r-13qz1uu.r-417010.r-18u37iz > main > div > div > div > div > div > div.r-6koalj.r-eqz5dr.r-1pi2tsx.r-13qz1uu > div > div > div.css-175oi2r.r-1p0dtai.r-gtdqiz.r-13qz1uu"
   );
+} else if (currentSite === "gemini") {
+  initialTargetElement = document.querySelector(".input-area-container");
+  console.log(
+    "[Quick Prompts Debug] Gemini initial target search result:",
+    initialTargetElement
+  );
+} else if (currentSite === "deepseek") {
+  const chatInput = document.querySelector("#chat-input");
+  console.log("[Quick Prompts Debug] DeepSeek chat input found:", chatInput);
+  if (chatInput) {
+    initialTargetElement = chatInput.closest("div[class*='dd442025']");
+    console.log(
+      "[Quick Prompts Debug] DeepSeek container found:",
+      initialTargetElement
+    );
+  }
 }
+
+console.log(
+  "[Quick Prompts Debug] Initial target element:",
+  initialTargetElement
+);
 
 if (initialTargetElement) {
   observedComposer = initialTargetElement;
@@ -451,6 +665,13 @@ chrome.storage.onChanged.addListener(
         targetElement = document.querySelector(
           "#react-root > div > div > div.css-175oi2r.r-1f2l425.r-13qz1uu.r-417010.r-18u37iz > main > div > div > div > div > div > div.r-6koalj.r-eqz5dr.r-1pi2tsx.r-13qz1uu > div > div > div.css-175oi2r.r-1p0dtai.r-gtdqiz.r-13qz1uu"
         );
+      } else if (currentSite === "gemini") {
+        targetElement = document.querySelector(".input-area-container");
+      } else if (currentSite === "deepseek") {
+        const chatInput = document.querySelector("#chat-input");
+        if (chatInput) {
+          targetElement = chatInput.closest("div[class*='dd442025']");
+        }
       }
 
       if (targetElement) {

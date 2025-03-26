@@ -141,3 +141,20 @@
 - Applied `justifyContent: center` to the flex container only on the Grok homepage
 - Maintained the original left alignment for conversation pages and other platforms
 - Improved visual consistency with Grok's centered UI elements 
+
+### Gemini Support Addition
+- Added support for Google's Gemini AI platform
+- Updated content script to detect and handle Gemini.com domain
+- Modified prompt injection strategy to insert between input-area-container and hallucination-disclaimer
+- Added Gemini domain to manifest.json permissions and content script matches
+- Ensured proper positioning and visibility of quick prompts bar in Gemini's UI
+- Maintained consistent styling and functionality across all supported platforms 
+
+### DeepSeek Support Addition
+- Added support for DeepSeek AI chat platform
+- Updated content script to detect and handle chat.deepseek.com domain
+- Modified prompt injection strategy to insert after the input container
+- Added DeepSeek domain to manifest.json permissions and content script matches
+- Implemented specific input element targeting using #chat-input selector
+- Ensured proper positioning and visibility of quick prompts bar in DeepSeek's UI
+- Maintained consistent styling and functionality across all supported platforms 
