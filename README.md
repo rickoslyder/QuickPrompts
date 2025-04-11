@@ -11,7 +11,7 @@ A Chrome extension that allows you to quickly inject pre-defined prompt template
 - 🎨 Customize prompts with colors and icons for easy identification
 - 🔍 Organize prompts with categories
 - 🤖 Optional AI-based categorization using your OpenAI API key
-- 📱 Works with both chat.openai.com and chatgpt.com domains
+- 📱 Works with ChatGPT, Gemini, Grok, DeepSeek and T3 Chat
 - 📦 Stores prompts locally on your device (with optional sync)
 - 🔄 Preserves all formatting and line breaks in your prompts
 - 🖱️ Inserts text at cursor position or replaces selected text
@@ -43,7 +43,7 @@ A Chrome extension that allows you to quickly inject pre-defined prompt template
 
 ### Using Prompts
 
-1. Visit ChatGPT (chat.openai.com or chatgpt.com)
+1. Visit ChatGPT (chat.openai.com or chatgpt.com), Grok, Gemini or T3 Chat
 2. Look for the prompt buttons below the input area
 3. Click any prompt to insert it at your cursor position
 4. Edit the inserted text as needed before sending
