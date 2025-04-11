@@ -26,6 +26,9 @@ const currentSite = (() => {
   } else if (url.includes("chat.deepseek.com")) {
     console.log("[Quick Prompts Debug] Detected DeepSeek");
     return "deepseek";
+  } else if (url.includes("t3.chat")) {
+    console.log("[Quick Prompts Debug] Detected T3 Chat");
+    return "t3chat";
   }
   return "unknown";
 })();
@@ -119,6 +122,21 @@ const observer = new MutationObserver(() => {
     );
     if (chatInput) {
       targetElement = chatInput.closest("div[class*='dd442025']");
+      console.log(
+        "[Quick Prompts Debug] Found container in mutation:",
+        targetElement
+      );
+    }
+  } else if (currentSite === "t3chat") {
+    console.log(
+      "[Quick Prompts Debug] Searching for T3 Chat elements in mutation"
+    );
+    const formElement = document.querySelector(
+      "form.relative.flex.w-full.flex-col.items-stretch.gap-2"
+    );
+    console.log("[Quick Prompts Debug] Found form element:", formElement);
+    if (formElement) {
+      targetElement = formElement;
       console.log(
         "[Quick Prompts Debug] Found container in mutation:",
         targetElement
@@ -285,6 +303,23 @@ async function injectPromptButtons(targetElement: Element) {
           "[Quick Prompts Debug] Failed to find DeepSeek injection point"
         );
       }
+    } else if (currentSite === "t3chat") {
+      console.log("[Quick Prompts Debug] Attempting T3 Chat injection");
+
+      // Add T3 Chat-specific styles
+      quickPromptsContainer!.style.backgroundColor = "rgba(255, 255, 255, 0.4)";
+      quickPromptsContainer!.style.backdropFilter = "blur(8px)";
+      quickPromptsContainer!.style.borderRadius = "16px";
+      quickPromptsContainer!.style.border =
+        "1px solid rgba(255, 255, 255, 0.7)";
+      quickPromptsContainer!.style.marginBottom = "12px";
+
+      // Insert at the beginning of the form
+      targetElement.insertBefore(
+        quickPromptsContainer!,
+        targetElement.firstChild
+      );
+      console.log("[Quick Prompts Debug] Successfully injected for T3 Chat");
     }
   } catch (error) {
     console.error(
@@ -517,6 +552,9 @@ function findInputElement(): HTMLElement | null {
   } else if (currentSite === "deepseek") {
     // Find DeepSeek input element
     return document.querySelector("#chat-input");
+  } else if (currentSite === "t3chat") {
+    // Find T3 Chat input element
+    return document.querySelector("#chat-input");
   }
 
   return null;
@@ -635,6 +673,18 @@ if (currentSite === "chatgpt") {
       initialTargetElement
     );
   }
+} else if (currentSite === "t3chat") {
+  const formElement = document.querySelector(
+    "form.relative.flex.w-full.flex-col.items-stretch.gap-2"
+  );
+  console.log("[Quick Prompts Debug] T3 Chat form element found:", formElement);
+  if (formElement) {
+    initialTargetElement = formElement;
+    console.log(
+      "[Quick Prompts Debug] T3 Chat container found:",
+      initialTargetElement
+    );
+  }
 }
 
 console.log(
@@ -672,6 +722,10 @@ chrome.storage.onChanged.addListener(
         if (chatInput) {
           targetElement = chatInput.closest("div[class*='dd442025']");
         }
+      } else if (currentSite === "t3chat") {
+        targetElement = document.querySelector(
+          "form.relative.flex.w-full.flex-col.items-stretch.gap-2"
+        );
       }
 
       if (targetElement) {

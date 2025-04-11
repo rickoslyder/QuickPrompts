@@ -9,6 +9,12 @@ export interface Prompt {
   icon: string;
 }
 
+export interface PromptExportData {
+  version: 1; // Schema version number
+  exportedAt: string; // ISO 8601 timestamp string (e.g., new Date().toISOString())
+  prompts: Prompt[]; // The array of prompt objects
+}
+
 export interface UserSettings {
   openAIApiKey?: string;
 }
