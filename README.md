@@ -44,6 +44,10 @@ A Chrome extension that allows you to quickly inject pre-defined prompt template
 2. Enter your prompt text, name, and select a color/icon.
 3. Click "Add Prompt".
 
+![Customisation UI](./screenshots/prompt-customisation.png)
+
+![Prompt Library UI](./screenshots/prompt-library.png)
+
 ### Using Prompts
 
 1. Visit a supported platform:
@@ -75,6 +79,8 @@ A Chrome extension that allows you to quickly inject pre-defined prompt template
         - `Replace All`: Deletes all current prompts and adds all incoming prompts.
         - `Cancel`: Close the modal without importing.
 
+![Import/Export UI](./screenshots/prompt-import.png)
+
 ### AI Categorization (Optional)
 
 1. Go to the extension options and click the "Settings" tab.
@@ -93,6 +99,8 @@ A Chrome extension that allows you to quickly inject pre-defined prompt template
 6.  When adding a **new** prompt, after typing your initial text, click the "Enhance with AI" button.
 7.  Review the AI's suggestion.
 8.  You can "Accept Suggestion" to replace your text, or provide feedback and click "Regenerate with Feedback" for another suggestion.
+
+![AI Enhancer UI](./screenshots/ai-enhancer.png)
 
 ### Settings
 
