@@ -58,6 +58,9 @@ const currentSite = (() => {
   } else if (url.includes("mistral.ai")) {
     console.log("[Quick Prompts Debug] Detected Mistral");
     return "mistral";
+  } else if (url.includes("aistudio.google.com")) {
+    console.log("[Quick Prompts Debug] Detected Google AI Studio");
+    return "aistudio";
   }
   return "unknown";
 })();
@@ -207,6 +210,26 @@ const observer = new MutationObserver(() => {
         "[Quick Prompts Debug] Found Mistral container in mutation:",
         targetElement
       );
+  } else if (currentSite === "aistudio") {
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] Searching for AI Studio elements in mutation"
+      );
+    // Target the footer containing the input wrapper
+    targetElement = document.querySelector("footer ms-prompt-input-wrapper");
+    if (targetElement) {
+      targetElement = targetElement.parentElement; // We want the parent footer
+      if (isDebugMode)
+        console.log(
+          "[Quick Prompts Debug] Found AI Studio footer container in mutation:",
+          targetElement
+        );
+    } else {
+      if (isDebugMode)
+        console.log(
+          "[Quick Prompts Debug] AI Studio footer container not found in mutation"
+        );
+    }
   }
 
   // If no target or we're already observing this one, do nothing
@@ -436,6 +459,37 @@ async function injectPromptButtons(targetElement: Element) {
           "[Quick Prompts Debug] Mistral inner content div not found, appending to form as fallback."
         );
         targetElement.appendChild(quickPromptsContainer!); // Fallback: append to the main form
+      }
+    } else if (currentSite === "aistudio") {
+      if (isDebugMode)
+        console.log("[Quick Prompts Debug] Attempting AI Studio injection");
+      // Insert before the prompt input wrapper within the footer
+      const inputWrapper = targetElement.querySelector(
+        "ms-prompt-input-wrapper"
+      );
+      if (inputWrapper && inputWrapper.parentNode === targetElement) {
+        // Ensure parent is the target footer
+        // Force the target footer itself to stack items vertically
+        (targetElement as HTMLElement).style.display = "flex"; // Ensure it's flex
+        (targetElement as HTMLElement).style.flexDirection = "column";
+
+        // Add AI Studio specific styles for spacing
+        // quickPromptsContainer!.style.flexBasis = "100%"; // No longer needed
+        quickPromptsContainer!.style.marginBottom = "8px"; // Keep space below buttons
+
+        // Insert *before* the input wrapper again
+        targetElement.insertBefore(quickPromptsContainer!, inputWrapper);
+
+        if (isDebugMode)
+          console.log(
+            "[Quick Prompts Debug] Successfully injected for AI Studio (footer set to column)"
+          );
+      } else {
+        if (isDebugMode)
+          console.log(
+            "[Quick Prompts Debug] AI Studio input wrapper not found, appending to footer as fallback."
+          );
+        targetElement.appendChild(quickPromptsContainer!); // Fallback
       }
     }
 
@@ -759,6 +813,10 @@ function findInputElement(): HTMLElement | null {
       return document.querySelector(
         'textarea[placeholder="Ask le Chat"]'
       ) as HTMLTextAreaElement;
+    case "aistudio":
+      return document.querySelector(
+        "ms-autosize-textarea textarea"
+      ) as HTMLTextAreaElement;
     default:
       return null;
   }
@@ -906,6 +964,14 @@ if (currentSite === "chatgpt") {
     "[Quick Prompts Debug] Mistral initial target search result:",
     initialTargetElement
   );
+} else if (currentSite === "aistudio") {
+  const wrapper = document.querySelector("footer ms-prompt-input-wrapper");
+  initialTargetElement = wrapper?.parentElement ?? null; // Get the parent footer
+  if (isDebugMode)
+    console.log(
+      "[Quick Prompts Debug] AI Studio initial target search result:",
+      initialTargetElement
+    );
 }
 
 console.log(
@@ -955,6 +1021,11 @@ chrome.storage.onChanged.addListener(
       } else if (currentSite === "mistral") {
         // Use escaped selector
         targetElement = document.querySelector("form.\\@container");
+      } else if (currentSite === "aistudio") {
+        const wrapper = document.querySelector(
+          "footer ms-prompt-input-wrapper"
+        );
+        targetElement = wrapper?.parentElement ?? null;
       }
 
       if (targetElement) {

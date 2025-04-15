@@ -27,7 +27,8 @@
         "https://chat.deepseek.com/*",
         "https://t3.chat/*",
         "https://claude.ai/*",
-        "*://*.mistral.ai/*"
+        "*://*.mistral.ai/*",
+        "https://aistudio.google.com/*"
       ],
       "js": ["contentScript.js"]
     }
@@ -42,6 +43,7 @@
     "https://chat.deepseek.com/*",
     "https://t3.chat/*",
     "https://claude.ai/*",
-    "*://*.mistral.ai/*"
+    "*://*.mistral.ai/*",
+    "https://aistudio.google.com/*"
   ]
 }
