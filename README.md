@@ -2,7 +2,7 @@
 
 A Chrome extension that allows you to quickly inject pre-defined prompt templates into conversations without copy-pasting.
 
-![QuickPrompts](./screenshots/example-usage.png)
+![QuickPrompts](./screenshots/example-usage.gif)
 
 ## Features
 
