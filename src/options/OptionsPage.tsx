@@ -14,7 +14,7 @@ enum Tab {
 
 const OptionsPage: React.FC = () => {
     const [prompts, setPrompts] = useState<Prompt[]>([]);
-    const [userSettings, setUserSettings] = useState<UserSettings>({ openAIApiKey: '', selectedModelId: null });
+    const [userSettings, setUserSettings] = useState<UserSettings>({ openAIApiKey: '', selectedModelId: null, debugModeEnabled: false });
     const [activeTab, setActiveTab] = useState<Tab>(Tab.Prompts);
     const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
@@ -111,22 +111,39 @@ const OptionsPage: React.FC = () => {
     };
 
     const handleSettingsChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = event.target;
-        setUserSettings(prevSettings => ({
-            ...prevSettings,
-            [name]: value === "" && event.target.tagName === 'SELECT' ? null : value
-        }));
+        const target = event.target;
+        const name = target.name;
 
-        if (name === 'openAIApiKey') {
-            if (value) {
-                fetchModelsOnApiKeyChange(value);
-            } else {
-                setAvailableModels([]);
-                setUserSettings(prevSettings => ({
-                    ...prevSettings,
-                    selectedModelId: null
-                }));
-                setModelsError(null);
+        if (target.type === 'checkbox') {
+            // Handle checkbox changes
+            const checked = (target as HTMLInputElement).checked;
+            setUserSettings(prevSettings => ({
+                ...prevSettings,
+                [name]: checked
+            }));
+        } else {
+            // Handle text input and select changes
+            const value = target.value;
+            // Special handling for empty select value to store null for model ID
+            const finalValue = name === 'selectedModelId' && value === "" ? null : value;
+
+            setUserSettings(prevSettings => ({
+                ...prevSettings,
+                [name]: finalValue
+            }));
+
+            // Handle side effects like fetching models for API key changes
+            if (name === 'openAIApiKey') {
+                if (value) {
+                    fetchModelsOnApiKeyChange(value);
+                } else {
+                    setAvailableModels([]);
+                    setUserSettings(prevSettings => ({
+                        ...prevSettings,
+                        selectedModelId: null
+                    }));
+                    setModelsError(null);
+                }
             }
         }
     };
@@ -466,6 +483,18 @@ const OptionsPage: React.FC = () => {
                                     Please enter your OpenAI API key above to load available models.
                                 </p>
                             )}
+                        </div>
+
+                        <div className="form-group form-group-checkbox">
+                            <label htmlFor="debugModeEnabled">Enable Debug Mode:</label>
+                            <input
+                                type="checkbox"
+                                id="debugModeEnabled"
+                                name="debugModeEnabled"
+                                checked={userSettings.debugModeEnabled || false}
+                                onChange={handleSettingsChange}
+                            />
+                            <small>Show detailed logs in the browser console for troubleshooting.</small>
                         </div>
 
                         <button

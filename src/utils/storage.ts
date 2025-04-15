@@ -16,8 +16,9 @@ export interface PromptExportData {
 }
 
 export interface UserSettings {
-  openAIApiKey?: string;
-  selectedModelId: string | null; // Added for model selection
+  openAIApiKey: string | null;
+  selectedModelId: string | null;
+  debugModeEnabled?: boolean; // Added debug mode flag
 }
 
 export interface StorageData {
@@ -29,8 +30,9 @@ export interface StorageData {
 const defaultData: StorageData = {
   prompts: [],
   userSettings: {
-    openAIApiKey: "",
-    selectedModelId: null, // Initialize with null
+    openAIApiKey: null,
+    selectedModelId: null,
+    debugModeEnabled: false, // Default to false
   },
 };
 
@@ -116,14 +118,16 @@ export const savePrompts = async (prompts: Prompt[]): Promise<void> => {
 export const saveUserSettings = async (
   settings: UserSettings
 ): Promise<void> => {
-  try {
-    const data = await getStorageData();
-    data.userSettings = settings;
-    await setStorageData(data);
-  } catch (error) {
-    console.error("Error saving user settings:", error);
-    throw new Error(`Failed to save user settings: ${error}`);
-  }
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set({ userSettings: settings }, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error saving user settings:", chrome.runtime.lastError);
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve();
+      }
+    });
+  });
 };
 
 /**
@@ -143,13 +147,16 @@ export const getPrompts = async (): Promise<Prompt[]> => {
  * Get user settings from storage
  */
 export const getUserSettings = async (): Promise<UserSettings> => {
-  try {
-    const data = await getStorageData();
-    // Ensure the default value includes the new field
-    return data.userSettings || { openAIApiKey: "", selectedModelId: null };
-  } catch (error) {
-    console.error("Error getting user settings:", error);
-    // Return the comprehensive default structure
-    return { openAIApiKey: "", selectedModelId: null };
-  }
+  return new Promise((resolve) => {
+    chrome.storage.local.get("userSettings", (result) => {
+      const settings = result.userSettings || {};
+      // Provide default values, including for the new debug flag
+      const defaults: UserSettings = {
+        openAIApiKey: null,
+        selectedModelId: null,
+        debugModeEnabled: false, // Default to false
+      };
+      resolve({ ...defaults, ...settings });
+    });
+  });
 };

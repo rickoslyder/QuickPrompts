@@ -1,5 +1,28 @@
 /// <reference types="chrome"/>
-import { Prompt, getPrompts } from "../utils/storage";
+import { Prompt, getPrompts, getUserSettings } from "../utils/storage";
+
+// --- Global Debug Flag ---
+let isDebugMode = false; // Global variable to hold the debug state
+
+// Function to fetch and set the debug mode initially
+const initializeDebugMode = async () => {
+  try {
+    const settings = await getUserSettings();
+    isDebugMode = settings.debugModeEnabled || false;
+    if (isDebugMode) {
+      console.log("[Quick Prompts Debug] Debug mode enabled.");
+    }
+  } catch (error) {
+    console.error(
+      "[Quick Prompts] Error fetching initial debug setting:",
+      error
+    );
+    isDebugMode = false; // Default to false on error
+  }
+};
+
+// Call initialization immediately
+initializeDebugMode();
 
 // Main container for quick prompt buttons
 let quickPromptsContainer: HTMLElement | null = null;
@@ -13,7 +36,7 @@ const containerId = "chatgpt-quick-prompts-container-" + Date.now();
 // Determine which site we're on
 const currentSite = (() => {
   const url = window.location.href;
-  console.log("[Quick Prompts Debug] Current URL:", url);
+  if (isDebugMode) console.log("[Quick Prompts Debug] Current URL:", url);
   if (url.includes("chat.openai.com") || url.includes("chatgpt.com")) {
     return "chatgpt";
   } else if (url.includes("grok.com")) {
@@ -39,7 +62,8 @@ const currentSite = (() => {
   return "unknown";
 })();
 
-console.log("[Quick Prompts Debug] Detected site:", currentSite);
+if (isDebugMode)
+  console.log("[Quick Prompts Debug] Detected site:", currentSite);
 
 // Check if we're on Grok homepage (not in a conversation)
 const isGrokHomepage = () => {
@@ -88,7 +112,7 @@ function getGrokTargetElement(): Element | null {
 
 // Observe DOM changes for dynamic UI injection
 const observer = new MutationObserver(() => {
-  console.log("[Quick Prompts Debug] DOM mutation observed");
+  if (isDebugMode) console.log("[Quick Prompts Debug] DOM mutation observed");
 
   // Find the target element based on current site
   let targetElement: Element | null = null;
@@ -102,97 +126,103 @@ const observer = new MutationObserver(() => {
       "#react-root > div > div > div.css-175oi2r.r-1f2l425.r-13qz1uu.r-417010.r-18u37iz > main > div > div > div > div > div > div.r-6koalj.r-eqz5dr.r-1pi2tsx.r-13qz1uu > div > div > div.css-175oi2r.r-1p0dtai.r-gtdqiz.r-13qz1uu"
     );
   } else if (currentSite === "gemini") {
-    console.log(
-      "[Quick Prompts Debug] Searching for Gemini elements in mutation"
-    );
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] Searching for Gemini elements in mutation"
+      );
     const inputArea = document.querySelector(".input-area-container");
-    console.log(
-      "[Quick Prompts Debug] Found input area in mutation:",
-      inputArea
-    );
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] Found input area in mutation:",
+        inputArea
+      );
     if (inputArea) {
       targetElement = inputArea;
-      console.log(
-        "[Quick Prompts Debug] Found container in mutation:",
-        targetElement
-      );
+      if (isDebugMode)
+        console.log(
+          "[Quick Prompts Debug] Found container in mutation:",
+          targetElement
+        );
     }
   } else if (currentSite === "deepseek") {
-    console.log(
-      "[Quick Prompts Debug] Searching for DeepSeek elements in mutation"
-    );
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] Searching for DeepSeek elements in mutation"
+      );
     const chatInput = document.querySelector("#chat-input");
-    console.log(
-      "[Quick Prompts Debug] Found chat input in mutation:",
-      chatInput
-    );
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] Found chat input in mutation:",
+        chatInput
+      );
     if (chatInput) {
       targetElement = chatInput.closest("div[class*='dd442025']");
-      console.log(
-        "[Quick Prompts Debug] Found container in mutation:",
-        targetElement
-      );
+      if (isDebugMode)
+        console.log(
+          "[Quick Prompts Debug] Found container in mutation:",
+          targetElement
+        );
     }
   } else if (currentSite === "t3chat") {
-    console.log(
-      "[Quick Prompts Debug] Searching for T3 Chat elements in mutation"
-    );
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] Searching for T3 Chat elements in mutation"
+      );
     const formElement = document.querySelector(
       "form.relative.flex.w-full.flex-col.items-stretch.gap-2"
     );
-    console.log("[Quick Prompts Debug] Found form element:", formElement);
+    if (isDebugMode)
+      console.log("[Quick Prompts Debug] Found form element:", formElement);
     if (formElement) {
       targetElement = formElement;
-      console.log(
-        "[Quick Prompts Debug] Found container in mutation:",
-        targetElement
-      );
+      if (isDebugMode)
+        console.log(
+          "[Quick Prompts Debug] Found container in mutation:",
+          targetElement
+        );
     }
   } else if (currentSite === "claude") {
-    console.log(
-      "[Quick Prompts Debug] Searching for Claude elements in mutation"
-    );
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] Searching for Claude elements in mutation"
+      );
     // Target the parent of the button row - escape dots in class names
     targetElement = document.querySelector(
       "div.flex.flex-col.gap-3\\.5.m-3\\.5"
     );
-    if (targetElement) {
+    if (isDebugMode)
       console.log(
         "[Quick Prompts Debug] Found Claude container in mutation:",
         targetElement
       );
-    } else {
-      console.log(
-        "[Quick Prompts Debug] Claude container not found in mutation"
-      );
-    }
   } else if (currentSite === "mistral") {
-    console.log(
-      "[Quick Prompts Debug] Searching for Mistral elements in mutation"
-    );
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] Searching for Mistral elements in mutation"
+      );
     // Target the main form container using escaped selector
     targetElement = document.querySelector("form.\\@container");
-    if (targetElement) {
+    if (isDebugMode)
       console.log(
         "[Quick Prompts Debug] Found Mistral container in mutation:",
         targetElement
       );
-    } else {
-      console.log(
-        "[Quick Prompts Debug] Mistral container not found in mutation"
-      );
-    }
   }
 
   // If no target or we're already observing this one, do nothing
   if (!targetElement || targetElement === observedComposer) {
-    console.log(
-      "[Quick Prompts Debug] No new target element found or already observing"
-    );
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] No new target element found or already observing"
+      );
     return;
   }
 
-  console.log("[Quick Prompts Debug] Found new target element:", targetElement);
+  if (isDebugMode)
+    console.log(
+      "[Quick Prompts Debug] Found new target element:",
+      targetElement
+    );
   // We found a new target - clean up and inject
   observedComposer = targetElement;
   cleanupExistingContainers();
@@ -204,18 +234,26 @@ const observer = new MutationObserver(() => {
  */
 async function injectPromptButtons(targetElement: Element) {
   try {
-    console.log(
-      "[Quick Prompts Debug] Starting injection for site:",
-      currentSite
-    );
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] Starting injection for site:",
+        currentSite
+      );
 
     // Get prompts from storage
     const prompts = await getPrompts();
-    console.log("[Quick Prompts Debug] Loaded prompts:", prompts?.length || 0);
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] Loaded prompts:",
+        prompts?.length || 0
+      );
 
     // If no prompts, don't inject anything
     if (!prompts || prompts.length === 0) {
-      console.log("[Quick Prompts Debug] No prompts found, skipping injection");
+      if (isDebugMode)
+        console.log(
+          "[Quick Prompts Debug] No prompts found, skipping injection"
+        );
       return;
     }
 
@@ -401,10 +439,11 @@ async function injectPromptButtons(targetElement: Element) {
       }
     }
 
-    console.log(
-      "[Quick Prompts Debug] Injection attempt complete for site:",
-      currentSite
-    );
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] Injection attempt complete for site:",
+        currentSite
+      );
   } catch (error) {
     console.error(
       "[Quick Prompts Debug] Error injecting prompt buttons:",
@@ -766,13 +805,11 @@ function createPromptButton(prompt: Prompt): HTMLElement {
     event.preventDefault();
     event.stopPropagation();
 
-    // Find the input element
     const inputElement = findInputElement();
 
     if (inputElement) {
-      console.log("Found input element:", inputElement);
+      if (isDebugMode) console.log("Found input element:", inputElement);
 
-      // Await the insertion function
       await insertTextAtCursorPosition(inputElement, prompt.text);
 
       // Find any submit buttons and ensure our prompt doesn't trigger them
@@ -783,7 +820,10 @@ function createPromptButton(prompt: Prompt): HTMLElement {
         // Make sure we don't accidentally submit
         setTimeout(() => {
           // This ensures we don't interfere with any event loops currently executing
-          console.log("Prompt insertion complete - cursor position preserved");
+          if (isDebugMode)
+            console.log(
+              "Prompt insertion complete - cursor position preserved"
+            );
         }, 50);
       }
     } else {
