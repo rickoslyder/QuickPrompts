@@ -39,8 +39,8 @@ coverage/
 tmp/
 temp/
 
-# Screenshots (only ignore in repo, but keep the folder)
-screenshots/*.png
-screenshots/*.jpg
-screenshots/*.gif
-!screenshots/.gitkeep 
+# Screenshots (only ignore in repo, but keep the folder - commenting out for now)
+# screenshots/*.png
+# screenshots/*.jpg
+# screenshots/*.gif
+# !screenshots/.gitkeep 
