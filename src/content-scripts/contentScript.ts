@@ -32,6 +32,9 @@ const currentSite = (() => {
   } else if (url.includes("claude.ai")) {
     console.log("[Quick Prompts Debug] Detected Claude");
     return "claude";
+  } else if (url.includes("mistral.ai")) {
+    console.log("[Quick Prompts Debug] Detected Mistral");
+    return "mistral";
   }
   return "unknown";
 })();
@@ -161,6 +164,22 @@ const observer = new MutationObserver(() => {
     } else {
       console.log(
         "[Quick Prompts Debug] Claude container not found in mutation"
+      );
+    }
+  } else if (currentSite === "mistral") {
+    console.log(
+      "[Quick Prompts Debug] Searching for Mistral elements in mutation"
+    );
+    // Target the main form container using escaped selector
+    targetElement = document.querySelector("form.\\@container");
+    if (targetElement) {
+      console.log(
+        "[Quick Prompts Debug] Found Mistral container in mutation:",
+        targetElement
+      );
+    } else {
+      console.log(
+        "[Quick Prompts Debug] Mistral container not found in mutation"
       );
     }
   }
@@ -358,6 +377,27 @@ async function injectPromptButtons(targetElement: Element) {
         );
         // Fallback: Append to the target element if button row isn't found
         targetElement.appendChild(quickPromptsContainer);
+      }
+    } else if (currentSite === "mistral") {
+      console.log(
+        "[Quick Prompts Debug] Attempting Mistral injection (bottom)"
+      );
+      // Find the inner div containing the textarea and button row
+      const innerContentDiv = targetElement.querySelector(
+        "div.flex.w-full.flex-col.p-4"
+      );
+
+      if (innerContentDiv) {
+        // Append the button container to the end of this inner div
+        innerContentDiv.appendChild(quickPromptsContainer!);
+        console.log(
+          "[Quick Prompts Debug] Successfully injected for Mistral (bottom)"
+        );
+      } else {
+        console.log(
+          "[Quick Prompts Debug] Mistral inner content div not found, appending to form as fallback."
+        );
+        targetElement.appendChild(quickPromptsContainer!); // Fallback: append to the main form
       }
     }
 
@@ -676,6 +716,10 @@ function findInputElement(): HTMLElement | null {
       return document.querySelector(
         "div.ProseMirror[contenteditable='true']"
       ) as HTMLElement;
+    case "mistral":
+      return document.querySelector(
+        'textarea[placeholder="Ask le Chat"]'
+      ) as HTMLTextAreaElement;
     default:
       return null;
   }
@@ -815,6 +859,13 @@ if (currentSite === "chatgpt") {
     "[Quick Prompts Debug] Claude initial target search result:",
     initialTargetElement
   );
+} else if (currentSite === "mistral") {
+  // Use escaped selector
+  initialTargetElement = document.querySelector("form.\\@container");
+  console.log(
+    "[Quick Prompts Debug] Mistral initial target search result:",
+    initialTargetElement
+  );
 }
 
 console.log(
@@ -861,6 +912,9 @@ chrome.storage.onChanged.addListener(
         targetElement = document.querySelector(
           "div.flex.flex-col.gap-3\\.5.m-3\\.5"
         );
+      } else if (currentSite === "mistral") {
+        // Use escaped selector
+        targetElement = document.querySelector("form.\\@container");
       }
 
       if (targetElement) {

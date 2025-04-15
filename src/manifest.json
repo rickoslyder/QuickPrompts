@@ -26,7 +26,8 @@
         "https://gemini.google.com/*",
         "https://chat.deepseek.com/*",
         "https://t3.chat/*",
-        "https://claude.ai/*"
+        "https://claude.ai/*",
+        "*://*.mistral.ai/*"
       ],
       "js": ["contentScript.js"]
     }
@@ -40,6 +41,7 @@
     "https://gemini.google.com/*",
     "https://chat.deepseek.com/*",
     "https://t3.chat/*",
-    "https://claude.ai/*"
+    "https://claude.ai/*",
+    "*://*.mistral.ai/*"
   ]
 }
