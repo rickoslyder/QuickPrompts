@@ -16,9 +16,10 @@ export interface PromptExportData {
 }
 
 export interface UserSettings {
-  openAIApiKey: string | null;
-  selectedModelId: string | null;
-  debugModeEnabled?: boolean; // Added debug mode flag
+  openAIApiKey?: string | null;
+  selectedModelId?: string | null;
+  debugModeEnabled?: boolean;
+  showPromptIcons?: boolean;
 }
 
 export interface StorageData {
@@ -26,14 +27,18 @@ export interface StorageData {
   userSettings: UserSettings;
 }
 
+// Default settings - ensure the new flag has a default (e.g., true)
+const defaultUserSettings: UserSettings = {
+  openAIApiKey: null,
+  selectedModelId: null,
+  debugModeEnabled: false,
+  showPromptIcons: true, // <-- Default to true
+};
+
 // Default data to initialize storage
 const defaultData: StorageData = {
   prompts: [],
-  userSettings: {
-    openAIApiKey: null,
-    selectedModelId: null,
-    debugModeEnabled: false, // Default to false
-  },
+  userSettings: defaultUserSettings,
 };
 
 /**
@@ -148,15 +153,24 @@ export const getPrompts = async (): Promise<Prompt[]> => {
  */
 export const getUserSettings = async (): Promise<UserSettings> => {
   return new Promise((resolve) => {
-    chrome.storage.local.get("userSettings", (result) => {
-      const settings = result.userSettings || {};
-      // Provide default values, including for the new debug flag
-      const defaults: UserSettings = {
-        openAIApiKey: null,
-        selectedModelId: null,
-        debugModeEnabled: false, // Default to false
+    chrome.storage.local.get(["userSettings"], (result) => {
+      if (chrome.runtime.lastError) {
+        console.error(
+          "Error getting user settings from local storage:",
+          chrome.runtime.lastError
+        );
+        // Resolve with defaults if there's an error reading
+        resolve({ ...defaultUserSettings });
+        return;
+      }
+
+      // Merge loaded settings with defaults to ensure all keys exist
+      // This ensures that if new settings are added, the object is still complete
+      const loadedSettings = {
+        ...defaultUserSettings,
+        ...(result.userSettings || {}),
       };
-      resolve({ ...defaults, ...settings });
+      resolve(loadedSettings);
     });
   });
 };

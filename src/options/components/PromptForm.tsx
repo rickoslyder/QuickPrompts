@@ -272,11 +272,12 @@ const PromptForm: React.FC<PromptFormProps> = ({
                                     <label htmlFor="enhancerFeedback">Feedback (optional):</label>
                                     <textarea
                                         id="enhancerFeedback"
-                                        className="form-control"
-                                        rows={2}
-                                        placeholder="Provide feedback for regeneration (e.g., 'Make it more formal', 'Focus on the output format')"
+                                        rows={3}
                                         value={enhancerFeedback}
-                                        onChange={handleFeedbackChange}
+                                        onChange={(e) => setEnhancerFeedback(e.target.value)}
+                                        placeholder="Provide feedback for regeneration (e.g., 'Make it more formal', 'Focus on the output format')"
+                                        className="form-control"
+                                        style={{ width: '100%', boxSizing: 'border-box' }}
                                     />
                                 </div>
                                 <button

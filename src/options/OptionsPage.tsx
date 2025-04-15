@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import PromptList from './components/PromptList';
 import PromptForm from './components/PromptForm';
 import CategorySuggestions from './components/CategorySuggestions';
+import ImportConfirmModal from './components/ImportConfirmModal';
 import { getPrompts, savePrompts, getUserSettings, saveUserSettings } from '../utils/storage';
 import { Prompt, UserSettings, PromptExportData } from '../utils/storage';
 import { getAvailableModels, OpenAIModel } from '../utils/openaiApi';
@@ -22,6 +23,10 @@ const OptionsPage: React.FC = () => {
     const [availableModels, setAvailableModels] = useState<OpenAIModel[]>([]);
     const [modelsLoading, setModelsLoading] = useState<boolean>(false);
     const [modelsError, setModelsError] = useState<string | null>(null);
+
+    // State for import confirmation modal
+    const [showImportModal, setShowImportModal] = useState<boolean>(false);
+    const [importedPromptsData, setImportedPromptsData] = useState<Prompt[] | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -318,35 +323,13 @@ const OptionsPage: React.FC = () => {
                     throw new Error("Invalid prompt data within the file. Check required fields (id, text, name, category, color, icon).");
                 }
 
-                const currentPrompts = await getPrompts();
+                // Don't save yet, show the modal instead
+                setImportedPromptsData(importedPrompts);
+                setShowImportModal(true);
 
-                const replace = window.confirm(
-                    `Import ${importedPrompts.length} prompts?\n\n` +
-                    `Click 'OK' to REPLACE your current ${currentPrompts.length} prompts with the imported ones.\n` +
-                    `Click 'Cancel' to MERGE the imported prompts, adding only new ones (based on ID).`
-                );
-
-                let finalPrompts: Prompt[] = [];
-                let notificationMessage = '';
-
-                if (replace) {
-                    finalPrompts = importedPrompts;
-                    notificationMessage = `Successfully imported and replaced ${finalPrompts.length} prompts.`;
-                } else {
-                    const currentPromptIds = new Set(currentPrompts.map(p => p.id));
-                    const newPromptsToMerge = importedPrompts.filter(p => !currentPromptIds.has(p.id));
-                    finalPrompts = [...currentPrompts, ...newPromptsToMerge];
-                    notificationMessage = `Successfully merged ${newPromptsToMerge.length} new prompts. Total prompts: ${finalPrompts.length}.`;
-                }
-
-                await savePrompts(finalPrompts);
-                setPrompts(finalPrompts);
-                showNotification('success', notificationMessage);
-
-            } catch (error) {
-                console.error("Failed to import prompts:", error);
-                const errorMessage = error instanceof Error ? error.message : "Unknown error during import.";
-                showNotification('error', `Import failed: ${errorMessage}`);
+            } catch (error: any) {
+                showNotification('error', `Import failed: ${error.message}`);
+                console.error('Import error:', error);
             }
         };
 
@@ -356,6 +339,66 @@ const OptionsPage: React.FC = () => {
 
         reader.readAsText(file);
     };
+
+    // --- Modal Handlers ---
+    const handleConfirmReplace = async () => {
+        if (!importedPromptsData) return;
+        try {
+            await savePrompts(importedPromptsData);
+            setPrompts(importedPromptsData);
+            showNotification('success', `${importedPromptsData.length} prompts imported (Replaced existing).`);
+        } catch (error) {
+            showNotification('error', 'Failed to replace prompts during import.');
+        }
+        setShowImportModal(false);
+        setImportedPromptsData(null);
+    };
+
+    const handleConfirmMerge = async () => {
+        if (!importedPromptsData) return;
+        try {
+            const currentPrompts = await getPrompts(); // Re-fetch current prompts
+            const currentIds = new Set(currentPrompts.map(p => p.id));
+            const newPrompts = importedPromptsData.filter(p => !currentIds.has(p.id));
+            const mergedPrompts = [...currentPrompts, ...newPrompts];
+            await savePrompts(mergedPrompts);
+            setPrompts(mergedPrompts);
+            showNotification('success', `${newPrompts.length} new prompts imported (Merged with existing).`);
+        } catch (error) {
+            showNotification('error', 'Failed to merge prompts during import.');
+        }
+        setShowImportModal(false);
+        setImportedPromptsData(null);
+    };
+
+    // --- New Handler for Replace Selected ---
+    const handleConfirmReplaceSelected = async (selectedIds: Set<string>) => {
+        if (!importedPromptsData || selectedIds.size === 0) return;
+        try {
+            const currentPrompts = await getPrompts();
+            const selectedImportedPrompts = importedPromptsData.filter(p => selectedIds.has(p.id));
+
+            // Filter out current prompts that have the same ID as the selected imported ones
+            const filteredCurrentPrompts = currentPrompts.filter(p => !selectedIds.has(p.id));
+
+            // Combine the filtered current prompts with the selected imported ones
+            const finalPrompts = [...filteredCurrentPrompts, ...selectedImportedPrompts];
+
+            await savePrompts(finalPrompts);
+            setPrompts(finalPrompts);
+            showNotification('success', `${selectedImportedPrompts.length} prompts imported (Replaced matching IDs).`);
+        } catch (error) {
+            showNotification('error', 'Failed to replace selected prompts during import.');
+        }
+        setShowImportModal(false);
+        setImportedPromptsData(null);
+    };
+
+    const handleCancelImport = () => {
+        setShowImportModal(false);
+        setImportedPromptsData(null);
+    };
+    // --- End Modal Handlers ---
 
     return (
         <div className="options-container">
@@ -368,6 +411,18 @@ const OptionsPage: React.FC = () => {
                     {notification.message}
                 </div>
             )}
+
+            {/* --- Import Confirmation Modal (Rendered near top for structure) --- */}
+            {showImportModal && importedPromptsData && (
+                <ImportConfirmModal
+                    importedPrompts={importedPromptsData}
+                    onConfirmReplace={handleConfirmReplace}
+                    onConfirmMerge={handleConfirmMerge}
+                    onConfirmReplaceSelected={handleConfirmReplaceSelected}
+                    onCancel={handleCancelImport}
+                />
+            )}
+            {/* --- End Import Confirmation Modal --- */}
 
             <div className="tabs">
                 <button
@@ -496,6 +551,20 @@ const OptionsPage: React.FC = () => {
                             />
                             <small>Show detailed logs in the browser console for troubleshooting.</small>
                         </div>
+
+                        {/* --- Show Icons Toggle --- */}
+                        <div className="form-group form-group-checkbox">
+                            <label htmlFor="showPromptIcons">Show Icons on Buttons:</label>
+                            <input
+                                type="checkbox"
+                                id="showPromptIcons"
+                                name="showPromptIcons"
+                                checked={userSettings.showPromptIcons ?? true} // Default to true if undefined
+                                onChange={handleSettingsChange}
+                            />
+                            <small>Display the selected icon next to the prompt name on injected buttons.</small>
+                        </div>
+                        {/* --- End Show Icons Toggle --- */}
 
                         <button
                             onClick={handleSaveSettings}

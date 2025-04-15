@@ -24,6 +24,28 @@ const initializeDebugMode = async () => {
 // Call initialization immediately
 initializeDebugMode();
 
+/**
+ * Ensures the Material Icons font is loaded on the page.
+ */
+function ensureMaterialIconsFont() {
+  const fontLinkId = "quickprompts-material-icons-font";
+  if (document.getElementById(fontLinkId)) {
+    // Font already loaded by this script
+    return;
+  }
+
+  const link = document.createElement("link");
+  link.id = fontLinkId;
+  link.rel = "stylesheet";
+  link.href = "https://fonts.googleapis.com/icon?family=Material+Icons";
+  document.head.appendChild(link);
+  if (isDebugMode)
+    console.log("[Quick Prompts Debug] Injected Material Icons font.");
+}
+
+// Ensure the font is loaded when the script runs
+ensureMaterialIconsFont();
+
 // Main container for quick prompt buttons
 let quickPromptsContainer: HTMLElement | null = null;
 
@@ -273,8 +295,13 @@ async function injectPromptButtons(targetElement: Element) {
         currentSite
       );
 
-    // Get prompts from storage
-    const prompts = await getPrompts();
+    // Get prompts AND settings from storage
+    const [prompts, settings] = await Promise.all([
+      getPrompts(),
+      getUserSettings(),
+    ]);
+    const showIcons = settings.showPromptIcons ?? true; // Default to true if setting is missing
+
     if (isDebugMode)
       console.log(
         "[Quick Prompts Debug] Loaded prompts:",
@@ -328,7 +355,7 @@ async function injectPromptButtons(targetElement: Element) {
 
     // Add prompt buttons to container
     prompts.forEach((prompt) => {
-      const button = createPromptButton(prompt);
+      const button = createPromptButton(prompt, showIcons);
 
       // Add DeepSeek-specific button styles
       if (currentSite === "deepseek") {
@@ -854,7 +881,7 @@ function findInputElement(): HTMLElement | null {
 /**
  * Creates a button element for a prompt
  */
-function createPromptButton(prompt: Prompt): HTMLElement {
+function createPromptButton(prompt: Prompt, showIcons: boolean): HTMLElement {
   const button = document.createElement("button");
 
   // Explicitly set type="button" to prevent form submission
@@ -869,7 +896,22 @@ function createPromptButton(prompt: Prompt): HTMLElement {
 
   button.textContent = displayText;
   button.title = prompt.text;
-  button.style.padding = "6px 12px";
+
+  // Prepend icon if enabled and prompt has an icon
+  if (showIcons && prompt.icon) {
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "material-icons prompt-button-icon"; // Add a class for styling
+    iconSpan.textContent = prompt.icon;
+    iconSpan.style.fontSize = "1.1em"; // Slightly larger icon
+    iconSpan.style.marginRight = "6px"; // Space between icon and text
+    iconSpan.style.verticalAlign = "middle"; // Align icon nicely with text
+    button.insertBefore(iconSpan, button.firstChild); // Insert icon before text
+  }
+
+  // Add button styles
+  button.style.display = "inline-flex"; // Use flex to align icon and text
+  button.style.alignItems = "center"; // Center items vertically
+  button.style.padding = "6px 10px"; // Adjust padding slightly if icon is present
   button.style.borderRadius = "4px";
   button.style.border = "none";
   button.style.background = prompt.color || "#444654";
