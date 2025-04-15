@@ -19,7 +19,6 @@ const PromptList: React.FC<PromptListProps> = ({ prompts, onEdit, onDelete, onRe
 
     return (
         <div className="prompt-list">
-            <h2>Your Prompts</h2>
             {prompts.map((prompt, index) => (
                 <div key={prompt.id} className="prompt-item">
                     <div

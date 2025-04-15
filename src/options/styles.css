@@ -40,15 +40,39 @@ body {
   margin-bottom: 20px;
 }
 
+/* Individual tab styling */
 .tab {
-  padding: 10px 15px;
+  padding: 10px 18px; /* Adjust padding */
   cursor: pointer;
-  border-bottom: 2px solid transparent;
+  border: none; /* Remove button border */
+  border-bottom: 3px solid transparent; /* Use bottom border for active state */
+  background: none; /* Remove default background */
+  margin-bottom: -1px; /* Overlap border-bottom of .tabs container */
+  font-size: 15px;
+  color: #555; /* Dim inactive tabs */
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.tab:hover {
+  color: #111;
+  border-bottom-color: #ddd; /* Subtle hover indication */
 }
 
 .tab.active {
-  border-bottom-color: #10a37f;
-  font-weight: 500;
+  border-bottom-color: #10a37f; /* Highlight active tab */
+  font-weight: 600;
+  color: #10a37f;
+}
+
+.tab:disabled {
+  color: #ccc; /* Style disabled tab */
+  cursor: not-allowed;
+  border-bottom-color: transparent;
+}
+
+.tab:disabled:hover {
+  color: #ccc;
+  border-bottom-color: transparent; /* Ensure no hover effect on disabled */
 }
 
 /* Form controls */
@@ -194,4 +218,206 @@ body {
   to {
     opacity: 1;
   }
+}
+
+/* --- Enhancer Section Styles --- */
+
+.enhancer-section {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+  margin-bottom: 20px;
+}
+
+.enhancer-section h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: #333;
+}
+
+.enhancer-preview {
+  margin-top: 15px;
+  border: 1px solid #e0e0e0;
+  padding: 15px;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+
+.enhancer-preview h5 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.enhancer-preview pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #eee;
+  font-family: monospace;
+  font-size: 13px;
+  color: #333;
+  max-height: 200px; /* Limit height and allow scroll if needed */
+  overflow-y: auto;
+}
+
+.enhancer-preview .form-group {
+  margin-top: 15px;
+  margin-bottom: 10px;
+}
+
+/* Smaller buttons for actions within preview */
+.button.button-small {
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
+/* Error message specific to forms */
+.form-group .error-message,
+.enhancer-section .error-message {
+  color: #c62828; /* Match notification error color */
+  font-size: 13px;
+  margin-top: 5px;
+}
+
+/* Loading indicator text */
+.enhancer-section p i {
+  color: #555;
+  font-style: italic;
+}
+
+/* General button styles (assuming they are defined elsewhere, like .btn) */
+.button {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button-primary {
+  background-color: #10a37f; /* Main green */
+  color: white;
+}
+
+.button-primary:hover:not(:disabled) {
+  background-color: #0d8a6a;
+}
+
+.button-secondary {
+  background-color: #e5e7eb; /* Light gray */
+  color: #374151; /* Darker gray text */
+  border: 1px solid #d1d5db;
+}
+
+.button-secondary:hover:not(:disabled) {
+  background-color: #d1d5db;
+}
+
+/* Adjustments for PromptForm layout if needed */
+.prompt-form .form-row {
+  display: flex;
+  gap: 15px; /* Consistent gap */
+  align-items: flex-end; /* Align bottoms of inputs/buttons */
+}
+
+/* Icon picker button styling */
+.icon-picker-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px; /* Fixed width */
+  height: 40px; /* Match input height */
+  padding: 0;
+  cursor: pointer;
+}
+
+.icon-picker-button .material-icons {
+  font-size: 20px;
+}
+
+.icon-picker-popover {
+  position: absolute;
+  background: white;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  padding: 10px;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr); /* Adjust columns as needed */
+  gap: 5px;
+  margin-top: 2px; /* Small gap below button */
+  border-radius: 4px;
+}
+
+/* Color Picker Styles */
+.color-picker-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px;
+  height: 40px; /* Match input height */
+}
+
+.color-input-native {
+  width: 30px;
+  height: 30px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  appearance: none; /* Hide default UI if possible */
+  -webkit-appearance: none;
+  border-radius: 3px;
+  overflow: hidden; /* Helps clip corners if browser adds border */
+}
+/* Style the color input directly */
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 3px;
+}
+input[type="color"]::-moz-color-swatch {
+  border: none;
+  border-radius: 3px;
+}
+
+.color-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid #eee;
+  transition: transform 0.1s ease;
+}
+
+.color-swatch.selected {
+  border: 2px solid #333;
+  transform: scale(1.1);
+}
+
+/* Form Actions (Submit/Cancel buttons) */
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
 }

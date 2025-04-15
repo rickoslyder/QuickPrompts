@@ -1,7 +1,7 @@
 {
-  "name": "chatgpt-quick-prompts",
+  "name": "quickprompts",
   "version": "1.0.0",
-  "description": "Chrome extension to quickly inject predefined prompts into ChatGPT",
+  "description": "Chrome extension to quickly inject predefined prompts",
   "main": "index.js",
   "scripts": {
     "build": "webpack --config webpack.config.js",

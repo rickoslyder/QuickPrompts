@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Prompt } from '../../utils/storage';
+// Import enhancer API function and types
+import { enhancePrompt, EnhancementHistoryItem } from '../../utils/openaiApi';
 
 // Available icons for prompts
 const availableIcons = [
@@ -24,12 +26,23 @@ const defaultColors = [
 ];
 
 interface PromptFormProps {
-    onSubmit: (prompt: Prompt) => void;
+    onSave: (prompt: Prompt) => void; // Renamed from onSubmit for clarity
     initialPrompt: Prompt | null;
     onCancel: () => void;
+    existingIds: string[]; // Add existing IDs for unique generation
+    // Add props for enhancer
+    apiKey: string | null;
+    selectedModelId: string | null;
 }
 
-const PromptForm: React.FC<PromptFormProps> = ({ onSubmit, initialPrompt, onCancel }) => {
+const PromptForm: React.FC<PromptFormProps> = ({
+    onSave,
+    initialPrompt,
+    onCancel,
+    existingIds,
+    apiKey,
+    selectedModelId
+}) => {
     const [name, setName] = useState('');
     const [text, setText] = useState('');
     const [category, setCategory] = useState('');
@@ -37,7 +50,23 @@ const PromptForm: React.FC<PromptFormProps> = ({ onSubmit, initialPrompt, onCanc
     const [icon, setIcon] = useState(availableIcons[0]);
     const [showIconPicker, setShowIconPicker] = useState(false);
 
-    // Reset form when initialPrompt changes
+    // --- Enhancer State ---
+    const [enhancerPreview, setEnhancerPreview] = useState<string | null>(null);
+    const [enhancerFeedback, setEnhancerFeedback] = useState('');
+    const [enhancerHistory, setEnhancerHistory] = useState<EnhancementHistoryItem[]>([]);
+    const [isEnhancing, setIsEnhancing] = useState<boolean>(false);
+    const [enhancerError, setEnhancerError] = useState<string | null>(null);
+    // --- End Enhancer State ---
+
+    const resetEnhancerState = useCallback(() => {
+        setEnhancerPreview(null);
+        setEnhancerFeedback('');
+        setEnhancerHistory([]);
+        setIsEnhancing(false);
+        setEnhancerError(null);
+    }, []);
+
+    // Reset form and enhancer state when initialPrompt changes
     useEffect(() => {
         if (initialPrompt) {
             setName(initialPrompt.name || '');
@@ -45,28 +74,112 @@ const PromptForm: React.FC<PromptFormProps> = ({ onSubmit, initialPrompt, onCanc
             setCategory(initialPrompt.category);
             setColor(initialPrompt.color);
             setIcon(initialPrompt.icon);
+            resetEnhancerState(); // Reset enhancer when editing
         } else {
+            // Reset form fields for adding new prompt
             setName('');
             setText('');
             setCategory('');
             setColor(defaultColors[0]);
             setIcon(availableIcons[0]);
+            resetEnhancerState(); // Ensure clean state for new prompt
         }
-    }, [initialPrompt]);
+    }, [initialPrompt, resetEnhancerState]);
+
+    // --- Enhancer Handlers ---
+    const handleEnhance = async () => {
+        if (!apiKey || !selectedModelId) {
+            setEnhancerError('API Key and Model must be configured in Settings to use enhancer.');
+            return;
+        }
+        if (!text.trim()) {
+            setEnhancerError('Please enter some initial prompt text to enhance.');
+            return;
+        }
+
+        setIsEnhancing(true);
+        setEnhancerError(null);
+        setEnhancerPreview(null); // Clear previous preview
+
+        try {
+            const result = await enhancePrompt(apiKey, selectedModelId, text, []); // Start with empty history
+            if (result.success && result.enhancedPrompt) {
+                setEnhancerPreview(result.enhancedPrompt);
+                setEnhancerHistory(result.history || []);
+            } else {
+                setEnhancerError(result.error?.message || 'Failed to enhance prompt.');
+            }
+        } catch (error) {
+            console.error("Enhancement error:", error);
+            setEnhancerError(error instanceof Error ? error.message : 'Unknown error during enhancement.');
+        } finally {
+            setIsEnhancing(false);
+        }
+    };
+
+    const handleRegenerate = async () => {
+        if (!apiKey || !selectedModelId || !enhancerPreview) {
+            setEnhancerError('Cannot regenerate without API Key, Model, and an initial suggestion.');
+            return;
+        }
+
+        setIsEnhancing(true);
+        setEnhancerError(null);
+
+        try {
+            // Pass current history and feedback
+            const result = await enhancePrompt(apiKey, selectedModelId, text, enhancerHistory, enhancerFeedback);
+            if (result.success && result.enhancedPrompt) {
+                setEnhancerPreview(result.enhancedPrompt);
+                setEnhancerHistory(result.history || []);
+                setEnhancerFeedback(''); // Clear feedback after using it
+            } else {
+                setEnhancerError(result.error?.message || 'Failed to regenerate enhancement.');
+            }
+        } catch (error) {
+            console.error("Regeneration error:", error);
+            setEnhancerError(error instanceof Error ? error.message : 'Unknown error during regeneration.');
+        } finally {
+            setIsEnhancing(false);
+        }
+    };
+
+    const handleAcceptSuggestion = () => {
+        if (enhancerPreview) {
+            setText(enhancerPreview); // Update main text area
+            resetEnhancerState(); // Clear enhancer section
+        }
+    };
+
+    const handleFeedbackChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setEnhancerFeedback(e.target.value);
+    };
+    // --- End Enhancer Handlers ---
+
+    // Generate a unique ID
+    const generateUniqueId = () => {
+        let newId = Date.now().toString();
+        while (existingIds.includes(newId)) {
+            // Simple increment might collide, add random suffix
+            newId = `${Date.now().toString()}-${Math.random().toString(36).substring(2, 7)}`;
+        }
+        return newId;
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!text.trim()) {
+            // Basic validation
             alert('Prompt text cannot be empty');
             return;
         }
 
         // If name is not provided, use the first few words of the text
-        const promptName = name.trim() || text.trim().split(' ').slice(0, 3).join(' ') + '...';
+        const promptName = name.trim() || text.trim().split(' ').slice(0, 5).join(' ') + (text.trim().split(' ').length > 5 ? '...' : '');
 
         const promptData: Prompt = {
-            id: initialPrompt ? initialPrompt.id : Date.now().toString(),
+            id: initialPrompt ? initialPrompt.id : generateUniqueId(), // Use generator for new prompts
             name: promptName,
             text: text.trim(),
             category: category.trim(),
@@ -74,13 +187,21 @@ const PromptForm: React.FC<PromptFormProps> = ({ onSubmit, initialPrompt, onCanc
             icon
         };
 
-        onSubmit(promptData);
+        onSave(promptData); // Use onSave prop
 
+        // Reset form only if adding a new prompt
         if (!initialPrompt) {
             setName('');
             setText('');
+            setCategory(''); // Reset category too
+            setColor(defaultColors[0]);
+            setIcon(availableIcons[0]);
+            resetEnhancerState(); // Clear enhancer state on successful save
         }
+        // No reset needed for updates, as the user might want to keep editing
     };
+
+    const canEnhance = apiKey && selectedModelId;
 
     return (
         <div className="prompt-form">
@@ -94,7 +215,7 @@ const PromptForm: React.FC<PromptFormProps> = ({ onSubmit, initialPrompt, onCanc
                         className="form-control"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="Enter a name for your prompt (optional)"
+                        placeholder="Brief name (optional, generated if blank)"
                     />
                 </div>
 
@@ -105,95 +226,151 @@ const PromptForm: React.FC<PromptFormProps> = ({ onSubmit, initialPrompt, onCanc
                         className="form-control"
                         value={text}
                         onChange={(e) => setText(e.target.value)}
-                        placeholder="Enter your prompt text here..."
-                        rows={4}
+                        placeholder="Enter the prompt you want to save..."
+                        rows={initialPrompt ? 4 : 6} // More rows when adding potentially
                         required
                     />
                 </div>
 
+                {/* --- AI Enhancer Section (Only show when adding new prompt) --- */}
+                {!initialPrompt && (
+                    <div className="enhancer-section">
+                        <hr />
+                        <h4>AI Prompt Enhancer</h4>
+                        <button
+                            type="button"
+                            className="button button-secondary"
+                            onClick={handleEnhance}
+                            disabled={!canEnhance || isEnhancing || !text.trim()}
+                            title={!canEnhance ? "Requires OpenAI API Key and Model selection in Settings" : (!text.trim() ? "Enter prompt text to enhance" : "Enhance prompt with AI")}
+                        >
+                            {isEnhancing && !enhancerPreview ? 'Enhancing...' : 'Enhance with AI'}
+                        </button>
+
+                        {enhancerError && (
+                            <p className="error-message" style={{ marginTop: '10px' }}>{enhancerError}</p>
+                        )}
+
+                        {isEnhancing && (
+                            <p style={{ marginTop: '10px' }}><i>Processing enhancement request...</i></p>
+                        )}
+
+                        {enhancerPreview && !isEnhancing && (
+                            <div className="enhancer-preview" style={{ marginTop: '15px', border: '1px solid #ccc', padding: '10px', borderRadius: '4px', backgroundColor: '#f9f9f9' }}>
+                                <h5>Suggested Enhancement:</h5>
+                                <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>{enhancerPreview}</pre>
+                                <button
+                                    type="button"
+                                    className="button button-primary button-small"
+                                    onClick={handleAcceptSuggestion}
+                                    style={{ marginRight: '10px' }}
+                                >
+                                    Accept Suggestion
+                                </button>
+                                <hr style={{ margin: '15px 0' }} />
+                                <div className="form-group">
+                                    <label htmlFor="enhancerFeedback">Feedback (optional):</label>
+                                    <textarea
+                                        id="enhancerFeedback"
+                                        className="form-control"
+                                        rows={2}
+                                        placeholder="Provide feedback for regeneration (e.g., 'Make it more formal', 'Focus on the output format')"
+                                        value={enhancerFeedback}
+                                        onChange={handleFeedbackChange}
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    className="button button-secondary button-small"
+                                    onClick={handleRegenerate}
+                                    disabled={isEnhancing}
+                                >
+                                    {isEnhancing ? 'Regenerating...' : 'Regenerate with Feedback'}
+                                </button>
+                            </div>
+                        )}
+                        <hr />
+                    </div>
+                )}
+                {/* --- End AI Enhancer Section --- */}
+
+                {/* Category field on its own line */}
+                <div className="form-group">
+                    <label htmlFor="promptCategory">Category</label>
+                    <input
+                        type="text"
+                        id="promptCategory"
+                        className="form-control"
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        placeholder="E.g., Coding, Writing (optional)"
+                    />
+                </div>
+
+                {/* Row for Icon and Color pickers */}
                 <div className="form-row">
-                    <div className="form-group" style={{ flex: 1 }}>
-                        <label htmlFor="promptCategory">Category (optional)</label>
-                        <input
-                            type="text"
-                            id="promptCategory"
-                            className="form-control"
-                            value={category}
-                            onChange={(e) => setCategory(e.target.value)}
-                            placeholder="E.g., Coding, Writing, etc."
-                        />
+                    {/* Icon Picker Button */}
+                    <div className="form-group" style={{ width: 'auto' }}>
+                        <label>Icon</label>
+                        <button
+                            type="button"
+                            className="form-control icon-picker-button"
+                            onClick={() => setShowIconPicker(!showIconPicker)}
+                            title="Select Icon"
+                        >
+                            <span className="material-icons">{icon || 'apps'}</span>
+                        </button>
+                        {showIconPicker && (
+                            <div className="icon-picker-popover">
+                                {availableIcons.map((i) => (
+                                    <div
+                                        key={i}
+                                        className={`icon-option ${i === icon ? 'selected' : ''}`}
+                                        onClick={() => { setIcon(i); setShowIconPicker(false); }}
+                                        title={i}
+                                    >
+                                        <span className="material-icons">{i}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
-                    <div className="form-group" style={{ width: '120px' }}>
+                    {/* Color Input - Take remaining space */}
+                    <div className="form-group" style={{ flex: 1 }}>
                         <label htmlFor="promptColor">Color</label>
-                        <div style={{ display: 'flex', gap: '5px' }}>
+                        <div className="color-picker-wrapper">
                             <input
                                 type="color"
                                 id="promptColor"
+                                className="color-input-native"
                                 value={color}
                                 onChange={(e) => setColor(e.target.value)}
-                                style={{ width: '40px', height: '40px', padding: 0, cursor: 'pointer' }}
+                                title="Choose custom color"
                             />
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                                {defaultColors.map((c) => (
-                                    <div
-                                        key={c}
-                                        style={{
-                                            width: '20px',
-                                            height: '20px',
-                                            backgroundColor: c,
-                                            cursor: 'pointer',
-                                            border: color === c ? '2px solid #000' : '1px solid #ddd',
-                                            borderRadius: '2px'
-                                        }}
-                                        onClick={() => setColor(c)}
-                                        title={c}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="form-group">
-                    <label htmlFor="promptIcon">Icon</label>
-                    <div
-                        className="form-control"
-                        style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-                        onClick={() => setShowIconPicker(!showIconPicker)}
-                    >
-                        <span className="material-icons" style={{ marginRight: '8px' }}>{icon}</span>
-                        {icon}
-                    </div>
-
-                    {showIconPicker && (
-                        <div className="icon-picker">
-                            {availableIcons.map((i) => (
+                            {/* Swatches */}
+                            {defaultColors.map((c) => (
                                 <div
-                                    key={i}
-                                    className={`icon-option ${i === icon ? 'selected' : ''}`}
-                                    onClick={() => {
-                                        setIcon(i);
-                                        setShowIconPicker(false);
-                                    }}
-                                    title={i}
-                                >
-                                    <span className="material-icons">{i}</span>
-                                </div>
+                                    key={c}
+                                    className={`color-swatch ${color === c ? 'selected' : ''}`}
+                                    style={{ backgroundColor: c }}
+                                    onClick={() => setColor(c)}
+                                    title={c}
+                                />
                             ))}
                         </div>
-                    )}
+                    </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                    <button type="submit" className="btn btn-primary">
+                <div className="form-actions">
+                    <button type="submit" className="button button-primary">
                         {initialPrompt ? 'Update Prompt' : 'Add Prompt'}
                     </button>
-
+                    {/* Only render Cancel button when editing */}
                     {initialPrompt && (
                         <button
                             type="button"
-                            className="btn btn-secondary"
+                            className="button button-secondary"
                             onClick={onCancel}
                         >
                             Cancel

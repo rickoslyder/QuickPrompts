@@ -17,6 +17,7 @@ export interface PromptExportData {
 
 export interface UserSettings {
   openAIApiKey?: string;
+  selectedModelId: string | null; // Added for model selection
 }
 
 export interface StorageData {
@@ -29,6 +30,7 @@ const defaultData: StorageData = {
   prompts: [],
   userSettings: {
     openAIApiKey: "",
+    selectedModelId: null, // Initialize with null
   },
 };
 
@@ -143,9 +145,11 @@ export const getPrompts = async (): Promise<Prompt[]> => {
 export const getUserSettings = async (): Promise<UserSettings> => {
   try {
     const data = await getStorageData();
-    return data.userSettings || { openAIApiKey: "" };
+    // Ensure the default value includes the new field
+    return data.userSettings || { openAIApiKey: "", selectedModelId: null };
   } catch (error) {
     console.error("Error getting user settings:", error);
-    return { openAIApiKey: "" };
+    // Return the comprehensive default structure
+    return { openAIApiKey: "", selectedModelId: null };
   }
 };

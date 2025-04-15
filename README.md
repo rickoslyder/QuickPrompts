@@ -1,8 +1,8 @@
-# ChatGPT Quick Prompts
+# QuickPrompts
 
-A Chrome extension that allows you to quickly inject pre-defined prompt templates into ChatGPT conversations without copy-pasting.
+A Chrome extension that allows you to quickly inject pre-defined prompt templates into conversations without copy-pasting.
 
-![ChatGPT Quick Prompts](./screenshots/example-usage.png)
+![QuickPrompts](./screenshots/example-usage.png)
 
 ## Features
 
@@ -11,6 +11,7 @@ A Chrome extension that allows you to quickly inject pre-defined prompt template
 - 🎨 Customize prompts with colors and icons for easy identification
 - 🔍 Organize prompts with categories
 - 🤖 Optional AI-based categorization using your OpenAI API key
+- ✨ **New:** AI-powered Prompt Enhancer to refine your prompts before saving (requires OpenAI API key)
 - 📱 Works with ChatGPT, Gemini, Grok, DeepSeek and T3 Chat
 - 📦 Stores prompts locally on your device (with optional sync)
 - 🔄 Preserves all formatting and line breaks in your prompts
@@ -55,6 +56,17 @@ A Chrome extension that allows you to quickly inject pre-defined prompt template
 3. Go to the "AI Categorization" tab
 4. Let the AI suggest categories for your prompts
 5. Accept or reject the suggestions
+
+### AI Prompt Enhancer (Optional)
+
+1.  Go to the extension options page (right-click extension icon -> Options).
+2.  Navigate to the "Settings" tab.
+3.  Enter your OpenAI API Key and save settings. Compatible AI models will load.
+4.  Select your preferred AI model from the dropdown and save settings again.
+5.  Navigate to the "Prompts" tab.
+6.  When adding a **new** prompt, after typing your initial text, click the "Enhance with AI" button.
+7.  Review the AI's suggestion.
+8.  You can "Accept Suggestion" to replace your text, or provide feedback and click "Regenerate with Feedback" for another suggestion.
 
 ## Development
 

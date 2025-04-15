@@ -111,3 +111,14 @@
   - Pay attention to edge cases like empty lines (still need `<br>` elements)
   - Handle initial line breaks based on existing content context
   - Use `range.collapse(false)` to position cursor after the entire inserted fragment 
+
+### Integrating Complex Features Across Components (React)
+- **Issue**: Adding a feature like the AI Prompt Enhancer requires state and logic across multiple components (`OptionsPage`, `PromptForm`, `openaiApi`, `storage`).
+- **Context**: The enhancer needs API key/model ID from settings (parent), interacts with API utils, manages its own state within the form component, and updates the form's main text state.
+- **Solution**:
+  - Clearly define props needed by child components (`PromptForm` needs `apiKey`, `selectedModelId`, `existingIds` from `OptionsPage`).
+  - Centralize API calls in utility functions (`enhancePrompt` in `openaiApi.ts`).
+  - Encapsulate feature-specific state and handlers within the most relevant component (`PromptForm`).
+  - Use `useCallback` for helper functions passed down or used in `useEffect` dependencies (`resetEnhancerState`).
+  - Be mindful of prop drilling and consider context or state management libraries for more complex scenarios, though prop drilling was sufficient here.
+  - Ensure state is reset appropriately when context changes (e.g., switching between adding/editing prompts, submitting the form). 

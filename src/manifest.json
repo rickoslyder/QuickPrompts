@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ChatGPT Quick Prompts",
+  "name": "QuickPrompts",
   "version": "1.0.0",
-  "description": "Quickly inject predefined prompts into ChatGPT",
+  "description": "Quickly inject predefined prompts into conversations",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -12,7 +12,7 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "ChatGPT Quick Prompts",
+    "default_title": "QuickPrompts",
     "default_popup": "options.html"
   },
   "options_page": "options.html",
