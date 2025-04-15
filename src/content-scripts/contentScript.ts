@@ -29,6 +29,9 @@ const currentSite = (() => {
   } else if (url.includes("t3.chat")) {
     console.log("[Quick Prompts Debug] Detected T3 Chat");
     return "t3chat";
+  } else if (url.includes("claude.ai")) {
+    console.log("[Quick Prompts Debug] Detected Claude");
+    return "claude";
   }
   return "unknown";
 })();
@@ -140,6 +143,24 @@ const observer = new MutationObserver(() => {
       console.log(
         "[Quick Prompts Debug] Found container in mutation:",
         targetElement
+      );
+    }
+  } else if (currentSite === "claude") {
+    console.log(
+      "[Quick Prompts Debug] Searching for Claude elements in mutation"
+    );
+    // Target the parent of the button row - escape dots in class names
+    targetElement = document.querySelector(
+      "div.flex.flex-col.gap-3\\.5.m-3\\.5"
+    );
+    if (targetElement) {
+      console.log(
+        "[Quick Prompts Debug] Found Claude container in mutation:",
+        targetElement
+      );
+    } else {
+      console.log(
+        "[Quick Prompts Debug] Claude container not found in mutation"
       );
     }
   }
@@ -320,7 +341,30 @@ async function injectPromptButtons(targetElement: Element) {
         targetElement.firstChild
       );
       console.log("[Quick Prompts Debug] Successfully injected for T3 Chat");
+    } else if (currentSite === "claude") {
+      console.log("[Quick Prompts Debug] Attempting Claude injection");
+      // Find the button row to insert *before* - escape dots in selector
+      const buttonRow = targetElement.querySelector(
+        "div.flex.gap-2\\.5.w-full.items-center"
+      );
+      if (buttonRow) {
+        console.log(
+          "[Quick Prompts Debug] Found Claude button row, inserting container before it."
+        );
+        targetElement.insertBefore(quickPromptsContainer, buttonRow);
+      } else {
+        console.log(
+          "[Quick Prompts Debug] Claude button row not found, appending to target as fallback."
+        );
+        // Fallback: Append to the target element if button row isn't found
+        targetElement.appendChild(quickPromptsContainer);
+      }
     }
+
+    console.log(
+      "[Quick Prompts Debug] Injection attempt complete for site:",
+      currentSite
+    );
   } catch (error) {
     console.error(
       "[Quick Prompts Debug] Error injecting prompt buttons:",
@@ -370,6 +414,31 @@ function insertTextWithLineBreaks(
   range.insertNode(fragment);
 
   // Move cursor to after the inserted content
+  range.collapse(false);
+}
+
+/**
+ * Handles insertion for Claude by creating paragraph elements.
+ */
+function insertRichTextForClaude(range: Range, text: string): void {
+  const lines = text.split("\n");
+  const fragment = document.createDocumentFragment();
+
+  lines.forEach((line, index) => {
+    const p = document.createElement("p");
+    // If the line is empty, ProseMirror often expects a <br> inside the <p>
+    if (line.trim() === "") {
+      p.appendChild(document.createElement("br"));
+    } else {
+      p.appendChild(document.createTextNode(line));
+    }
+    fragment.appendChild(p);
+  });
+
+  // Insert the fragment containing <p> elements
+  range.insertNode(fragment);
+
+  // Collapse the range to the end
   range.collapse(false);
 }
 
@@ -440,10 +509,10 @@ function insertTextIntoQuillEditor(editor: HTMLElement, text: string): void {
  * Safely insert text at the current cursor position
  * Handles complex DOM structure and selection states
  */
-function insertTextAtCursorPosition(
+async function insertTextAtCursorPosition(
   inputElement: HTMLElement,
   text: string
-): void {
+): Promise<void> {
   // For standard textareas (like Grok uses), use the simpler method
   if (inputElement.tagName.toLowerCase() === "textarea") {
     insertTextIntoTextarea(inputElement as HTMLTextAreaElement, text);
@@ -456,7 +525,75 @@ function insertTextAtCursorPosition(
     return;
   }
 
-  // For contenteditable elements (like ChatGPT uses)
+  // --- Special handling for Claude (ProseMirror) ---
+  if (currentSite === "claude") {
+    inputElement.focus();
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      console.error(
+        "[Quick Prompts Debug] Could not get selection or range for Claude."
+      );
+      // Basic fallback if selection fails
+      inputElement.innerText = text;
+      inputElement.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+
+    // --- Create the fragment first ---
+    const lines = text.split("\n");
+    const fragment = document.createDocumentFragment();
+    lines.forEach((line) => {
+      const p = document.createElement("p");
+      if (line.trim() === "") {
+        p.appendChild(document.createElement("br"));
+      } else {
+        p.appendChild(document.createTextNode(line));
+      }
+      fragment.appendChild(p);
+    });
+
+    // --- Adjust range & insert ---
+    const isEditorEffectivelyEmpty =
+      inputElement.children.length === 1 &&
+      inputElement.firstChild?.nodeName === "P" &&
+      (inputElement.firstChild as HTMLElement).classList.contains(
+        "is-editor-empty"
+      ) &&
+      range.startContainer === inputElement.firstChild && // Cursor is in the empty P
+      range.startOffset === 0;
+
+    if (isEditorEffectivelyEmpty && inputElement.firstChild) {
+      // Remove the placeholder paragraph entirely
+      const placeholderP = inputElement.firstChild; // Keep reference
+      inputElement.removeChild(placeholderP);
+      // Append the fragment directly to the main editor div
+      inputElement.appendChild(fragment);
+      // Set range to the end of the newly added content
+      range.selectNodeContents(inputElement);
+      range.collapse(false); // Collapse to the end
+    } else {
+      // Clear any existing selection if not collapsed
+      if (!selection.isCollapsed) {
+        range.deleteContents();
+      }
+      // Insert the structured fragment at the current range
+      range.insertNode(fragment);
+      range.collapse(false); // Collapse the range to its end point after insertion
+    }
+
+    // Update the selection
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    // Dispatch input event crucial for ProseMirror to recognize the change
+    inputElement.dispatchEvent(new Event("input", { bubbles: true }));
+    return; // End Claude-specific logic
+  }
+  // --- End Claude specific handling ---
+
+  // --- Default contenteditable handling (like ChatGPT) ---
   // Store current focus state
   const wasAlreadyFocused = document.activeElement === inputElement;
 
@@ -468,6 +605,8 @@ function insertTextAtCursorPosition(
   if (!selection) {
     // Fallback: Just set the innerText (preserves line breaks)
     inputElement.innerText = text;
+    // Dispatch input event
+    inputElement.dispatchEvent(new Event("input", { bubbles: true }));
     return;
   }
 
@@ -483,14 +622,13 @@ function insertTextAtCursorPosition(
     }
 
     // Check if we need a line break before inserting
-    // If we're at the beginning of the input, don't add a line break
     const needsLineBreak =
       range.startOffset > 0 &&
       !range.startContainer.textContent
         ?.substring(0, range.startOffset)
         .endsWith("\n");
 
-    // Insert the text with proper line breaks
+    // Insert the text with proper line breaks using the default method
     insertTextWithLineBreaks(range, text, needsLineBreak);
 
     // Update the selection
@@ -509,55 +647,38 @@ function insertTextAtCursorPosition(
   if (!wasAlreadyFocused) {
     // We intentionally leave it focused since we just inserted text
   }
+  // --- End Default contenteditable handling ---
 }
 
 /**
- * Find the input element for the current site
+ * Finds the appropriate input area (textarea or contenteditable div)
  */
 function findInputElement(): HTMLElement | null {
-  if (currentSite === "chatgpt") {
-    return document.querySelector("#prompt-textarea");
-  } else if (currentSite === "grok") {
-    // Find Grok.com input element - try multiple selectors
-    const selectors = [
-      // Conversation page textarea
-      'textarea[aria-label="Ask Grok anything"]',
-      // Homepage textarea
-      "div.flex.flex-col.items-center.w-full textarea",
-      // Generic contenteditable
-      '[contenteditable="true"]',
-    ];
-
-    for (const selector of selectors) {
-      const element = document.querySelector(selector);
-      if (element) return element as HTMLElement;
-    }
-
-    return null;
-  } else if (currentSite === "x-grok") {
-    // Find X.com Grok input element
-    return document.querySelector('[data-testid="tweetTextarea_0"]');
-  } else if (currentSite === "gemini") {
-    // Try to find the rich-textarea first
-    const richTextarea = document.querySelector("rich-textarea .ql-editor");
-    if (richTextarea) return richTextarea as HTMLElement;
-
-    // Fallback to any contenteditable div in the input area
-    const inputArea = document.querySelector(".input-area-container");
-    if (inputArea) {
-      const editableDiv = inputArea.querySelector('[contenteditable="true"]');
-      if (editableDiv) return editableDiv as HTMLElement;
-    }
-    return null;
-  } else if (currentSite === "deepseek") {
-    // Find DeepSeek input element
-    return document.querySelector("#chat-input");
-  } else if (currentSite === "t3chat") {
-    // Find T3 Chat input element
-    return document.querySelector("#chat-input");
+  switch (currentSite) {
+    case "chatgpt":
+      return document.getElementById("prompt-textarea") as HTMLTextAreaElement;
+    case "grok":
+    case "x-grok":
+      return document.querySelector(
+        "textarea[data-testid='tweetTextarea_0']"
+      ) as HTMLTextAreaElement;
+    case "gemini":
+      // Gemini uses a contenteditable div
+      return document.querySelector(".ql-editor.textarea") as HTMLElement;
+    case "deepseek":
+      return document.querySelector("#chat-input") as HTMLTextAreaElement;
+    case "t3chat":
+      return document.querySelector(
+        "textarea[placeholder='Type a message...']"
+      ) as HTMLTextAreaElement;
+    case "claude":
+      // Claude uses a contenteditable div
+      return document.querySelector(
+        "div.ProseMirror[contenteditable='true']"
+      ) as HTMLElement;
+    default:
+      return null;
   }
-
-  return null;
 }
 
 /**
@@ -596,7 +717,7 @@ function createPromptButton(prompt: Prompt): HTMLElement {
   };
 
   // Add click handler to inject prompt text
-  button.onclick = (event) => {
+  button.onclick = async (event) => {
     // Prevent default button behavior and stop event propagation
     event.preventDefault();
     event.stopPropagation();
@@ -607,8 +728,8 @@ function createPromptButton(prompt: Prompt): HTMLElement {
     if (inputElement) {
       console.log("Found input element:", inputElement);
 
-      // Insert text at cursor position or replace selection
-      insertTextAtCursorPosition(inputElement, prompt.text);
+      // Await the insertion function
+      await insertTextAtCursorPosition(inputElement, prompt.text);
 
       // Find any submit buttons and ensure our prompt doesn't trigger them
       const submitButton = document.querySelector(
@@ -685,6 +806,15 @@ if (currentSite === "chatgpt") {
       initialTargetElement
     );
   }
+} else if (currentSite === "claude") {
+  // Use the correct selector for the initial target element search
+  initialTargetElement = document.querySelector(
+    "div.flex.flex-col.gap-3\\.5.m-3\\.5"
+  );
+  console.log(
+    "[Quick Prompts Debug] Claude initial target search result:",
+    initialTargetElement
+  );
 }
 
 console.log(
@@ -725,6 +855,11 @@ chrome.storage.onChanged.addListener(
       } else if (currentSite === "t3chat") {
         targetElement = document.querySelector(
           "form.relative.flex.w-full.flex-col.items-stretch.gap-2"
+        );
+      } else if (currentSite === "claude") {
+        // Use the correct selector in the storage listener as well
+        targetElement = document.querySelector(
+          "div.flex.flex-col.gap-3\\.5.m-3\\.5"
         );
       }
 
