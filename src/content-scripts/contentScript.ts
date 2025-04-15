@@ -121,7 +121,17 @@ const observer = new MutationObserver(() => {
   let targetElement: Element | null = null;
 
   if (currentSite === "chatgpt") {
-    targetElement = document.querySelector("#composer-background");
+    // Find the main composer form
+    const composerForm = document.querySelector(
+      'form[data-type="unified-composer"]'
+    );
+    // Target the parent of the form
+    targetElement = composerForm?.parentElement ?? null;
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] ChatGPT target search (form parent):",
+        targetElement
+      );
   } else if (currentSite === "grok") {
     targetElement = getGrokTargetElement();
   } else if (currentSite === "x-grok") {
@@ -335,12 +345,30 @@ async function injectPromptButtons(targetElement: Element) {
 
     // Insert container based on the current site
     if (currentSite === "chatgpt") {
-      // Original ChatGPT insertion - after composer background
-      if (targetElement.parentElement) {
-        targetElement.parentElement.insertBefore(
-          quickPromptsContainer,
-          targetElement.nextSibling
+      // Center the buttons within the container for ChatGPT
+      quickPromptsContainer!.style.justifyContent = "center";
+
+      // Find the form within the target element
+      const composerForm = targetElement?.querySelector(
+        'form[data-type="unified-composer"]'
+      );
+      if (composerForm && targetElement) {
+        // Insert the button container *after* the form, within the form's parent
+        targetElement.insertBefore(
+          quickPromptsContainer!,
+          composerForm.nextSibling
         );
+        if (isDebugMode)
+          console.log(
+            "[Quick Prompts Debug] Injected for new ChatGPT UI (after form)"
+          );
+      } else {
+        // Fallback: Append to target element if form isn't found (less ideal)
+        targetElement?.appendChild(quickPromptsContainer!);
+        if (isDebugMode)
+          console.log(
+            "[Quick Prompts Debug] Injected for new ChatGPT UI (fallback append)"
+          );
       }
     } else if (currentSite === "grok" || currentSite === "x-grok") {
       // For Grok on grok.com and x.com, append as the last child
@@ -789,7 +817,8 @@ async function insertTextAtCursorPosition(
 function findInputElement(): HTMLElement | null {
   switch (currentSite) {
     case "chatgpt":
-      return document.getElementById("prompt-textarea") as HTMLTextAreaElement;
+      // The ID seems to now be on the contenteditable div itself
+      return document.getElementById("prompt-textarea") as HTMLElement;
     case "grok":
     case "x-grok":
       return document.querySelector(
@@ -913,7 +942,15 @@ console.log(
 );
 
 if (currentSite === "chatgpt") {
-  initialTargetElement = document.querySelector("#composer-background");
+  // New ChatGPT UI: Find parent of the form
+  const composerForm = document.querySelector(
+    'form[data-type="unified-composer"]'
+  );
+  initialTargetElement = composerForm?.parentElement ?? null;
+  console.log(
+    "[Quick Prompts Debug] ChatGPT initial target search (form parent):",
+    initialTargetElement
+  );
 } else if (currentSite === "grok") {
   initialTargetElement = getGrokTargetElement();
 } else if (currentSite === "x-grok") {
@@ -995,7 +1032,11 @@ chrome.storage.onChanged.addListener(
       let targetElement: Element | null = null;
 
       if (currentSite === "chatgpt") {
-        targetElement = document.querySelector("#composer-background");
+        // New ChatGPT UI: Find parent of the form
+        const composerForm = document.querySelector(
+          'form[data-type="unified-composer"]'
+        );
+        targetElement = composerForm?.parentElement ?? null;
       } else if (currentSite === "grok") {
         targetElement = getGrokTargetElement();
       } else if (currentSite === "x-grok") {
