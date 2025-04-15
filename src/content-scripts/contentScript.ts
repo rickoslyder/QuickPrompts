@@ -83,6 +83,12 @@ const currentSite = (() => {
   } else if (url.includes("aistudio.google.com")) {
     console.log("[Quick Prompts Debug] Detected Google AI Studio");
     return "aistudio";
+  } else if (url.includes("copilot.microsoft.com")) {
+    console.log("[Quick Prompts Debug] Detected Copilot");
+    return "copilot";
+  } else if (url.includes("perplexity.ai")) {
+    console.log("[Quick Prompts Debug] Detected Perplexity");
+    return "perplexity";
   }
   return "unknown";
 })();
@@ -262,6 +268,32 @@ const observer = new MutationObserver(() => {
           "[Quick Prompts Debug] AI Studio footer container not found in mutation"
         );
     }
+  } else if (currentSite === "copilot") {
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] Searching for Copilot elements in mutation"
+      );
+    // Target the composer content div
+    targetElement = document.querySelector(
+      'div[data-testid="composer-content"]'
+    );
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] Found Copilot container in mutation:",
+        targetElement
+      );
+  } else if (currentSite === "perplexity") {
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] Searching for Perplexity elements in mutation"
+      );
+    // Target the main query box span wrapper
+    targetElement = document.querySelector('span[cplx-main-query-box="true"]');
+    if (isDebugMode)
+      console.log(
+        "[Quick Prompts Debug] Found Perplexity container in mutation:",
+        targetElement
+      );
   }
 
   // If no target or we're already observing this one, do nothing
@@ -545,6 +577,56 @@ async function injectPromptButtons(targetElement: Element) {
             "[Quick Prompts Debug] AI Studio input wrapper not found, appending to footer as fallback."
           );
         targetElement.appendChild(quickPromptsContainer!); // Fallback
+      }
+    } else if (currentSite === "copilot") {
+      if (isDebugMode)
+        console.log(
+          "[Quick Prompts Debug] Attempting Copilot injection (inside composer-content)"
+        );
+      // Insert the container *inside* the target composer content div, at the beginning
+      if (targetElement) {
+        targetElement.insertBefore(
+          quickPromptsContainer!,
+          targetElement.firstChild
+        );
+        if (isDebugMode)
+          console.log(
+            "[Quick Prompts Debug] Successfully injected for Copilot (inside composer-content)"
+          );
+        // Add specific styling for Copilot if needed
+        quickPromptsContainer!.style.marginBottom = "10px";
+        quickPromptsContainer!.style.padding = "8px 12px"; // Add some padding to match parent
+        quickPromptsContainer!.style.margin = "0"; // Remove default margin
+      } else {
+        if (isDebugMode)
+          console.error(
+            "[Quick Prompts Debug] Target element null for Copilot injection."
+          );
+        // Fallback: append to body? Or just log error.
+        // document.body.appendChild(quickPromptsContainer!); // Avoid body fallback for now
+      }
+    } else if (currentSite === "perplexity") {
+      if (isDebugMode)
+        console.log(
+          "[Quick Prompts Debug] Attempting Perplexity injection (inside main span, below input)"
+        );
+      // Insert the container *inside* the target main span, at the end
+      if (targetElement) {
+        targetElement.appendChild(quickPromptsContainer!); // Append instead of insertBefore
+        if (isDebugMode)
+          console.log(
+            "[Quick Prompts Debug] Successfully injected for Perplexity (inside main span, below input)"
+          );
+        // Add specific styling for Perplexity if needed
+        quickPromptsContainer!.style.marginTop = "10px"; // Changed from marginBottom
+        quickPromptsContainer!.style.padding = "4px 0"; // Keep padding
+        quickPromptsContainer!.style.margin = "0"; // Remove default margin
+        // quickPromptsContainer!.style.backgroundColor = "transparent"; // Keep background default
+      } else {
+        if (isDebugMode)
+          console.error(
+            "[Quick Prompts Debug] Target element null for Perplexity injection."
+          );
       }
     }
 
@@ -867,11 +949,19 @@ function findInputElement(): HTMLElement | null {
       ) as HTMLElement;
     case "mistral":
       return document.querySelector(
-        'textarea[placeholder="Ask le Chat"]'
+        'textarea[placeholder="Send a message"]'
       ) as HTMLTextAreaElement;
     case "aistudio":
       return document.querySelector(
-        "ms-autosize-textarea textarea"
+        "textarea.query-input"
+      ) as HTMLTextAreaElement;
+    case "copilot":
+      return document.querySelector(
+        "textarea#userInput"
+      ) as HTMLTextAreaElement;
+    case "perplexity":
+      return document.querySelector(
+        "textarea[placeholder='Ask anything...']"
       ) as HTMLTextAreaElement;
     default:
       return null;
@@ -1045,12 +1135,25 @@ if (currentSite === "chatgpt") {
   );
 } else if (currentSite === "aistudio") {
   const wrapper = document.querySelector("footer ms-prompt-input-wrapper");
-  initialTargetElement = wrapper?.parentElement ?? null; // Get the parent footer
-  if (isDebugMode)
-    console.log(
-      "[Quick Prompts Debug] AI Studio initial target search result:",
-      initialTargetElement
-    );
+  initialTargetElement = wrapper?.parentElement ?? null;
+} else if (currentSite === "copilot") {
+  // Use the same selector as in the mutation observer
+  initialTargetElement = document.querySelector(
+    'div[data-testid="composer-content"]'
+  );
+  console.log(
+    "[Quick Prompts Debug] Copilot initial target search result:",
+    initialTargetElement
+  );
+} else if (currentSite === "perplexity") {
+  // Use the updated selector
+  initialTargetElement = document.querySelector(
+    'span[cplx-main-query-box="true"]'
+  );
+  console.log(
+    "[Quick Prompts Debug] Perplexity initial target search result:",
+    initialTargetElement
+  );
 }
 
 console.log(
@@ -1066,7 +1169,13 @@ if (initialTargetElement) {
 // Listen for storage changes to update buttons
 chrome.storage.onChanged.addListener(
   (changes: { [key: string]: chrome.storage.StorageChange }) => {
-    if (changes.prompts) {
+    if (changes.prompts || changes.userSettings) {
+      if (isDebugMode) {
+        console.log(
+          "[Quick Prompts Debug] Storage changed (Prompts or Settings), re-injecting.",
+          changes
+        );
+      }
       // Clean up existing containers first
       cleanupExistingContainers();
 
@@ -1109,11 +1218,32 @@ chrome.storage.onChanged.addListener(
           "footer ms-prompt-input-wrapper"
         );
         targetElement = wrapper?.parentElement ?? null;
+      } else if (currentSite === "copilot") {
+        // Use the same selector as in the mutation observer
+        targetElement = document.querySelector(
+          'div[data-testid="composer-content"]'
+        );
+      } else if (currentSite === "perplexity") {
+        // Use the updated selector
+        targetElement = document.querySelector(
+          'span[cplx-main-query-box="true"]'
+        );
       }
 
+      // Check if targetElement is found before proceeding
       if (targetElement) {
-        observedComposer = targetElement;
-        injectPromptButtons(targetElement);
+        // Assign to a new constant inside the check to help TypeScript
+        const definiteTargetElement = targetElement;
+        observedComposer = definiteTargetElement;
+        injectPromptButtons(definiteTargetElement); // Use the definite constant
+      } else {
+        // Optional: Log if target not found for debugging
+        if (isDebugMode) {
+          console.log(
+            "[Quick Prompts Debug] Target element not found in storage listener for",
+            currentSite
+          );
+        }
       }
     }
   }
