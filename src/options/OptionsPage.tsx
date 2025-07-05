@@ -6,6 +6,7 @@ import ImportConfirmModal from './components/ImportConfirmModal';
 import { getPrompts, savePrompts, getUserSettings, saveUserSettings } from '../utils/storage';
 import { Prompt, UserSettings, PromptExportData } from '../utils/storage';
 import { getAvailableModels, OpenAIModel } from '../utils/openaiApi';
+import { getModelConfig } from '../utils/modelConfig';
 
 enum Tab {
     Prompts = 'prompts',
@@ -521,17 +522,28 @@ const OptionsPage: React.FC = () => {
                                 <option value="" disabled={!userSettings.openAIApiKey || modelsLoading}>
                                     {userSettings.openAIApiKey ? (modelsLoading ? 'Loading models...' : (modelsError ? 'Error loading models' : (availableModels.length === 0 ? 'No compatible models found' : 'Select a model...'))) : 'Enter API Key to load models'}
                                 </option>
-                                {availableModels.map((model) => (
-                                    <option key={model.id} value={model.id}>
-                                        {model.id}
-                                    </option>
-                                ))}
+                                {availableModels.map((model) => {
+                                    const config = getModelConfig(model.id);
+                                    const categoryLabel = config.category === 'reasoning' ? ' [Reasoning]' : config.category === 'chat' ? ' [Chat]' : '';
+                                    return (
+                                        <option key={model.id} value={model.id} title={config.description || ''}>
+                                            {config.displayName}{categoryLabel} ({config.parameters.maxTokensLimit || 'N/A'} max tokens)
+                                        </option>
+                                    );
+                                })}
                             </select>
                             {modelsError && <p className="error-message">Error: {modelsError}</p>}
                             {!modelsError && !modelsLoading && userSettings.openAIApiKey && availableModels.length > 0 && (
-                                <p className="description">
-                                    Select the model to use for the AI Prompt Enhancer feature. Compatible chat models are listed.
-                                </p>
+                                <>
+                                    <p className="description">
+                                        Select the model to use for AI features. [Chat] models support all features. [Reasoning] models (o1 series) have advanced capabilities but don't support JSON mode for categorization.
+                                    </p>
+                                    {userSettings.selectedModelId && getModelConfig(userSettings.selectedModelId).description && (
+                                        <p className="description" style={{ fontStyle: 'italic', fontSize: '0.9em' }}>
+                                            {getModelConfig(userSettings.selectedModelId).description}
+                                        </p>
+                                    )}
+                                </>
                             )}
                             {!userSettings.openAIApiKey && (
                                 <p className="description">
@@ -584,6 +596,7 @@ const OptionsPage: React.FC = () => {
                         <p>Automatically suggest categories for your uncategorized prompts using AI.</p>
                         <CategorySuggestions
                             apiKey={userSettings.openAIApiKey || ''}
+                            selectedModelId={userSettings.selectedModelId}
                             prompts={prompts}
                             onApply={handleApplyCategorySuggestions}
                             onCancel={() => setActiveTab(Tab.Prompts)}

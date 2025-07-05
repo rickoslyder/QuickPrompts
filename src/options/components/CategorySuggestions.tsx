@@ -5,6 +5,7 @@ import { getCategorySuggestions, CategoryResult } from '../../utils/openaiApi';
 interface CategorySuggestionsProps {
     prompts: Prompt[];
     apiKey: string;
+    selectedModelId?: string | null;
     onApply: (prompts: Prompt[]) => void;
     onCancel: () => void;
 }
@@ -14,7 +15,7 @@ interface PromptWithSuggestion extends Prompt {
     useCategory: boolean;
 }
 
-const CategorySuggestions: React.FC<CategorySuggestionsProps> = ({ prompts, apiKey, onApply, onCancel }) => {
+const CategorySuggestions: React.FC<CategorySuggestionsProps> = ({ prompts, apiKey, selectedModelId, onApply, onCancel }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [promptsWithSuggestions, setPromptsWithSuggestions] = useState<PromptWithSuggestion[]>([]);
@@ -30,7 +31,7 @@ const CategorySuggestions: React.FC<CategorySuggestionsProps> = ({ prompts, apiK
         setError(null);
 
         try {
-            const result: CategoryResult = await getCategorySuggestions(apiKey, prompts);
+            const result: CategoryResult = await getCategorySuggestions(apiKey, prompts, selectedModelId || undefined);
 
             if (!result.success || !result.suggestions) {
                 setError(result.error?.message || 'Failed to categorize prompts');

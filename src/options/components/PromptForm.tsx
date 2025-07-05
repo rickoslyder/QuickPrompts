@@ -248,7 +248,10 @@ const PromptForm: React.FC<PromptFormProps> = ({
                         </button>
 
                         {enhancerError && (
-                            <p className="error-message" style={{ marginTop: '10px' }}>{enhancerError}</p>
+                            <div className="notification notification-error" style={{ marginTop: '10px', padding: '10px', borderRadius: '4px' }}>
+                                <span className="material-icons" style={{ marginRight: '8px', verticalAlign: 'middle', fontSize: '20px' }}>error_outline</span>
+                                <span>{enhancerError}</span>
+                            </div>
                         )}
 
                         {isEnhancing && (
